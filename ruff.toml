@@ -1,0 +1,6 @@
+target-version = "py312"
+src = ["backend"]
+
+[lint.isort]
+known-first-party = ["app"]
+known-third-party = ["alembic"]

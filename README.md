@@ -72,6 +72,12 @@ source .venv/bin/activate
 pytest
 ```
 
+## CI
+
+Every push and pull request targeting `main` runs lint (`ruff check backend/`) and unit tests (`pytest backend/tests/`) automatically via GitHub Actions (`backend-ci`). The job does not start Docker, the frontend, Redis, Postgres, or any live external APIs.
+
+A `backend-ci` check must pass before merging.
+
 ## Layout
 
 ```

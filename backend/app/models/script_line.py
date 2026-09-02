@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.project import Project
+    from app.models.speaker import Speaker
 
 
 class ScriptLine(Base):
@@ -25,5 +32,5 @@ class ScriptLine(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    project: Mapped["Project"] = relationship(back_populates="script_lines")
-    speaker: Mapped["Speaker"] = relationship(back_populates="script_lines")
+    project: Mapped[Project] = relationship(back_populates="script_lines")
+    speaker: Mapped[Speaker] = relationship(back_populates="script_lines")

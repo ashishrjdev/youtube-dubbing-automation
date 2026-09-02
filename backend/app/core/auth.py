@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from supabase_auth.errors import AuthError
 from supabase_auth.types import User
 
 from app.core.config import settings
@@ -28,12 +29,12 @@ async def get_current_user(
 
     try:
         response = get_supabase_client().auth.get_user(credentials.credentials)
-    except Exception:
+    except (AuthError, RuntimeError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     if response is None or response.user is None:
         raise HTTPException(
