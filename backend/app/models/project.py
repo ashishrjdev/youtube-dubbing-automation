@@ -1,12 +1,20 @@
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.generation import Generation
+    from app.models.script_line import ScriptLine
+    from app.models.speaker import Speaker
 
 
 class SourceType(str, enum.Enum):
@@ -43,12 +51,12 @@ class Project(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    speakers: Mapped[list["Speaker"]] = relationship(
+    speakers: Mapped[list[Speaker]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    script_lines: Mapped[list["ScriptLine"]] = relationship(
+    script_lines: Mapped[list[ScriptLine]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
-    generations: Mapped[list["Generation"]] = relationship(
+    generations: Mapped[list[Generation]] = relationship(
         back_populates="project", cascade="all, delete-orphan"
     )
