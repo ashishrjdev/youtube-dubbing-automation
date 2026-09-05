@@ -36,19 +36,23 @@ cp .env.example frontend/.env.local
 
 `.env` is never committed — only `.env.example` is. Copy it to `.env` (and `frontend/.env.local`) and fill in real values locally or in the host environment.
 
-## Backend, worker, and Redis
+## Running locally
 
-From the repo root:
+Postgres is **not** part of local Docker. The database is hosted Supabase, and both `backend` and `worker` connect to it via `DATABASE_URL` in `.env`. Local Compose only runs Redis, the API, and the RQ worker.
+
+From the repo root (after `.env` is filled in):
 
 ```bash
 docker compose up --build
 ```
 
 - API: [http://localhost:8000](http://localhost:8000)
-- Health check: [http://localhost:8000/health](http://localhost:8000/health)
+- Health check: [http://localhost:8000/health](http://localhost:8000/health) (includes the active `environment`)
 - Redis: `localhost:6379`
 
-The frontend is **not** containerized so hot reload stays fast.
+The API container runs as a non-root user and mounts `backend/app` so uvicorn `--reload` picks up code changes without rebuilding. After changing `backend/Dockerfile` or `requirements.txt`, rebuild with `docker compose up --build`.
+
+The frontend is **not** containerized so its hot reload stays fast.
 
 ## Frontend
 

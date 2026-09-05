@@ -3,29 +3,41 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   backend:
     build:
       context: ./backend
+    image: dubbing-platform-api
+    restart: unless-stopped
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
     depends_on:
-      - redis
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   worker:
     build:
       context: ./backend
+    image: dubbing-platform-api
+    restart: unless-stopped
     env_file:
-      - path: .env
-        required: false
+      - .env
     environment:
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     command: python -m app.workers.worker
