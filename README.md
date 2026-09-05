@@ -26,6 +26,16 @@ cp .env.example frontend/.env.local
 
 `REDIS_URL` for processes running in Compose should be `redis://redis:6379/0`. For host-side tools talking to the published Redis port, use `redis://localhost:6379/0`.
 
+## Environments
+
+`ENVIRONMENT` is `development`, `staging`, or `production` (defaults to `development`). It controls:
+
+- OpenAPI docs (`/docs`, `/redoc`): on in development and staging, off in production
+- CORS: origins come from `CORS_ORIGINS` (comma-separated). `*` is allowed only in development
+- Log level: `DEBUG` in development, `INFO` in staging and production
+
+`.env` is never committed — only `.env.example` is. Copy it to `.env` (and `frontend/.env.local`) and fill in real values locally or in the host environment.
+
 ## Backend, worker, and Redis
 
 From the repo root:
