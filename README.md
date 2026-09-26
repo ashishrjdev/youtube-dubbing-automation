@@ -40,9 +40,18 @@ cp .env.example frontend/.env.local
 
 Postgres is **not** part of local Docker. The database is hosted Supabase, and both `backend` and `worker` connect to it via `DATABASE_URL` in `.env`. Local Compose only runs Redis, the API, and the RQ worker.
 
-From the repo root (after `.env` is filled in):
+From the repo root (after `.env` is filled in, including a real `DATABASE_URL`):
 
 ```bash
+# 1. Apply DB migrations (required on every fresh setup)
+cd backend
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+cd ..
+
+# 2. Start Redis + API + worker
 docker compose up --build
 ```
 
@@ -64,19 +73,24 @@ npm run dev
 
 App: [http://localhost:3000](http://localhost:3000)
 
-## Alembic migrations
+## Database Migrations
 
-Run against the Postgres instance in `DATABASE_URL` (typically the Supabase project database):
+Schema changes always go through Alembic against the Supabase Postgres URL in `DATABASE_URL`. **Never hand-edit the Supabase schema directly — every change goes through a migration, even small ones.**
+
+From `backend/` (with the venv activated):
 
 ```bash
-cd backend
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# Generate a migration from model changes
+alembic revision --autogenerate -m "description"
+
+# Apply all pending migrations
 alembic upgrade head
+
+# Roll back the most recent migration
+alembic downgrade -1
 ```
 
-The initial migration creates `projects`, `speakers`, `script_lines`, and `generations`.
+Review the generated file under `alembic/versions/` before applying. The initial migration creates `projects`, `speakers`, `script_lines`, and `generations`.
 
 ## Tests
 

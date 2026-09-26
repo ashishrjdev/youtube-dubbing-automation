@@ -23,7 +23,7 @@ class Generation(Base):
     )
     audio_file_url: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False)
-    speed: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)
+    speed: Mapped[float] = mapped_column(Float, nullable=False, default=0.9, server_default="0.9")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
