@@ -11,14 +11,35 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-if settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
+if not settings.database_url:
+    raise RuntimeError(
+        "DATABASE_URL is not set. Copy .env.example to .env and set the Supabase Postgres URI."
+    )
+
+database_url = settings.database_url.strip()
+if database_url.startswith(("http://", "https://")):
+    raise RuntimeError(
+        "DATABASE_URL looks like an HTTP(S) API URL. Use the Postgres connection string from "
+        "Supabase → Project Settings → Database → Connection string → URI "
+        "(must start with postgresql://)."
+    )
+if not database_url.startswith(("postgresql://", "postgres://")):
+    raise RuntimeError(
+        "DATABASE_URL must be a Postgres URI starting with postgresql:// "
+        "(Supabase → Project Settings → Database → Connection string → URI)."
+    )
+# SQLAlchemy / psycopg2 expect postgresql://
+if database_url.startswith("postgres://"):
+    database_url = "postgresql://" + database_url.removeprefix("postgres://")
+
+# Always take the URL from app settings (Supabase via .env), never a hardcoded string.
+config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    url = settings.database_url or config.get_main_option("sqlalchemy.url")
+    url = database_url
     context.configure(
         url=url,
         target_metadata=target_metadata,
