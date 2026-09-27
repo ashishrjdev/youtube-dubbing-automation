@@ -114,6 +114,36 @@ alembic downgrade -1
 
 Review the generated file under `alembic/versions/` before applying. The initial migration creates `projects`, `speakers`, `script_lines`, and `generations`.
 
+## Storage
+
+Audio files (uploaded source audio and generated clips) live in Supabase Storage. **Nothing is publicly accessible** — the bucket is private and every read goes through a short-lived signed URL.
+
+**One-time setup (per Supabase project).** In the Supabase dashboard: **Storage → New bucket**, name it `audio-files`, and leave **"Public bucket" OFF**. Don't add any public Storage policies.
+
+**Folder convention** (helpers in `app/services/storage.py`):
+
+| What | Path |
+| --- | --- |
+| User-uploaded source audio | `uploads/{project_id}/{filename}` |
+| Generated audio | `generations/{project_id}/{generation_id}.mp3` |
+
+**Backend API.** `app/services/storage.py` exposes `upload_file(path, file_bytes, content_type)`, `get_signed_url(path, expires_in=3600)`, and `delete_file(path)`. All three use the **service role key** server-side and raise `StorageError` on failure rather than failing silently.
+
+**The frontend never talks to Supabase Storage directly** and never sees `SUPABASE_SERVICE_KEY`. Uploads and downloads go through backend endpoints, which hand the browser signed URLs.
+
+**Verify (development only):**
+
+```bash
+# Uploads a test WAV, fetches it via a signed URL (should work) and via the
+# unsigned public/direct URLs (should be denied), then deletes it.
+curl -X POST "http://localhost:8000/debug/storage-test"
+
+# Same, but keeps the file and returns the signed URL so you can try both in a browser
+curl -X POST "http://localhost:8000/debug/storage-test?keep=true"
+```
+
+`private_bucket_verified: true` in the response means the signed URL worked and both unsigned URLs were rejected.
+
 ## Tests
 
 ```bash
