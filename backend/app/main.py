@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models as _models  # noqa: F401  register SQLAlchemy mappers
 from app.core.auth import get_current_user
 from app.core.config import settings
-from app.routers import generations, projects, script_lines, speakers
+from app.routers import debug, generations, projects, script_lines, speakers
 
 
 def configure_logging() -> None:
@@ -41,6 +41,9 @@ def create_app() -> FastAPI:
     app.include_router(script_lines.router, dependencies=protected)
     app.include_router(speakers.router, dependencies=protected)
     app.include_router(generations.router, dependencies=protected)
+
+    if settings.is_development:
+        app.include_router(debug.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

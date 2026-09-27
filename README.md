@@ -73,6 +73,28 @@ npm run dev
 
 App: [http://localhost:3000](http://localhost:3000)
 
+## Background Jobs
+
+Long-running work (transcription, rewrite, audio generation) runs as RQ jobs on Redis, executed by the `worker` container. Job functions live in `backend/app/workers/`.
+
+**Enqueueing.** API code gets the shared queue from `app.core.queue.get_queue()` (connected via `REDIS_URL`) and calls `queue.enqueue(job_function, *args)`. `enqueue` returns immediately with a job ID; the worker picks the job up in the background.
+
+**Checking status.** `rq.job.Job.fetch(job_id, connection=queue.connection)` returns the job. `job.get_status()` is one of `queued`, `started`, `finished`, or `failed`. `job.return_value()` holds the result once finished, and `job.exc_info` holds the traceback if it failed.
+
+**Failures.** An exception inside a job marks that job `failed`; the worker keeps processing the rest of the queue. If the worker process dies mid-job (crash, container restart), the job is **not** silently dropped: once its heartbeat expires, the worker moves it to `failed` with `AbandonedJobError` — within about 2 minutes with the worker settings in `app/workers/worker.py`. Such jobs are not retried automatically; pass `retry=Retry(max=N)` to `enqueue` for jobs that should be re-run instead.
+
+**Debug endpoints (development only).** When `ENVIRONMENT=development`, the API also exposes:
+
+```bash
+# Enqueue the three stub jobs; add include_failure=true and/or sleep_seconds=N for testing
+curl -X POST "http://localhost:8000/debug/test-job"
+
+# Check a job's status, result, and error
+curl http://localhost:8000/debug/test-job/<job_id>
+```
+
+These routes are not registered at all in staging or production. Watch the worker with `docker compose logs -f worker`.
+
 ## Database Migrations
 
 Schema changes always go through Alembic against the Supabase Postgres URL in `DATABASE_URL`. **Never hand-edit the Supabase schema directly — every change goes through a migration, even small ones.**
