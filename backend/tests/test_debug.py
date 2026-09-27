@@ -56,3 +56,4 @@ def test_debug_routes_absent_outside_development(
 
     assert client.post("/debug/test-job").status_code == 404
     assert client.get("/debug/test-job/some-id").status_code == 404
+    assert client.post("/debug/storage-test").status_code == 404
