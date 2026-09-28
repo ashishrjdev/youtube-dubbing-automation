@@ -173,8 +173,28 @@ Supabase Auth issues and signs the access and refresh tokens. This project signs
 - Never `print`, `logger.*`, or `console.log` a request body, form values, auth payload, or auth response.
 - Don't add request/response-body logging middleware. If you ever need it, it must redact `password`, `confirm_password`, `new_password`, `token`, `access_token`, `refresh_token`, and `authorization` first.
 - `app/core/logging.py` caps `hpack`, `h2`, and `httpcore` at WARNING. At DEBUG they log raw HTTP headers, which include the Supabase service key and users' Bearer tokens. Don't lower them.
-- 422 validation errors never echo submitted values (the `input` field is stripped in `app/main.py`).
+- 422 validation errors never echo submitted values (see Input Validation below).
 - **Sentry (not installed yet):** when you add it, set `send_default_pii=False` on both backend and frontend SDKs and add a `before_send` hook that scrubs the fields above from `request.data`, headers, and breadcrumbs.
+
+## Input Validation
+
+Every request body is a Pydantic model that extends `RequestModel` (`app/core/validation.py`), and every path or query param is typed. Don't parse `await request.json()` or accept a raw `dict`.
+
+- **Error shape.** All validation failures (wrong type, missing field, bad JSON, bad path param) return `422` with:
+  ```json
+  {"error": "validation_error", "details": [{"loc": ["body", "original_text"], "msg": "...", "type": "string_too_short"}]}
+  ```
+  Submitted values are never echoed back.
+- **Unknown fields are rejected** (`extra="forbid"`), so a client can't sneak in something like `user_id`.
+- **Text fields** use the shared types, which strip whitespace and then enforce length. A whitespace-only value fails as empty.
+  - `Name`: 1–100 chars. Used for character names.
+  - `ScriptText`: 1–5,000 chars. Used for script line text.
+  - `DraftScriptText`: 0–5,000 chars. Used for `rewritten_text` on create, before the rewrite has run.
+  - `SourceRef`: 1–1,024 chars.
+- **YouTube URLs** must match `YOUTUBE_URL_RE` (`youtube.com/watch?v=`, `youtu.be/`, `/shorts/`, `/live/`, `/embed/`, with an 11-character video ID) before anything reaches `yt-dlp`. The match is anchored, so values like `--exec ...` or `youtube.com.evil.com` are rejected.
+- **Numbers:** `speed` must be between 0.7 and 1.2 (the ElevenLabs range). `order_index` must be finite, not NaN or infinity.
+- **SQL:** use the SQLAlchemy ORM or bound parameters only. Never build SQL with f-strings or `%` formatting from user input.
+- **Frontend:** render user text as normal JSX children, which React escapes. Never pass user-supplied text to `dangerouslySetInnerHTML`.
 
 ## Production Secrets
 
@@ -194,6 +214,10 @@ Supabase Auth issues and signs the access and refresh tokens. This project signs
 
 ```bash
 cd backend
+# One-time setup. Needs Python 3.12; macOS's built-in python3 (3.9) won't work.
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+
 source .venv/bin/activate
 pytest
 ```

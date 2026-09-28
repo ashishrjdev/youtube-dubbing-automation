@@ -29,18 +29,18 @@ def create_app() -> FastAPI:
     )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_error_without_input(
+    async def validation_error_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
         # FastAPI's default 422 echoes the submitted value (e.g. a password) back
         # in each error's "input"; loc/msg/type are enough for clients.
-        errors = [
-            {k: v for k, v in error.items() if k not in ("input", "ctx")}
+        details = [
+            {"loc": list(error["loc"]), "msg": error["msg"], "type": error["type"]}
             for error in exc.errors()
         ]
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            content={"detail": jsonable_encoder(errors)},
+            content={"error": "validation_error", "details": jsonable_encoder(details)},
         )
 
     app.include_router(me.router)

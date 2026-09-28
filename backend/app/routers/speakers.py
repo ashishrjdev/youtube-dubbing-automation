@@ -4,13 +4,14 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from app.core.stubs import not_implemented
+from app.core.validation import ElevenLabsVoiceId, Name, RequestModel
 
 router = APIRouter(tags=["speakers"])
 
 
-class SpeakerVoiceMappingUpdate(BaseModel):
-    character_name: str | None = None
-    elevenlabs_voice_id: str | None = None
+class SpeakerVoiceMappingUpdate(RequestModel):
+    character_name: Name | None = None
+    elevenlabs_voice_id: ElevenLabsVoiceId | None = None
 
 
 class SpeakerResponse(BaseModel):
@@ -24,10 +25,10 @@ class SpeakerResponse(BaseModel):
 
 
 @router.get("/projects/{project_id}/speakers", response_model=list[SpeakerResponse])
-def list_speakers(_project_id: UUID) -> None:
+def list_speakers(project_id: UUID) -> None:
     not_implemented()
 
 
 @router.patch("/speakers/{speaker_id}", response_model=SpeakerResponse)
-def update_speaker_voice_mapping(_speaker_id: UUID, _payload: SpeakerVoiceMappingUpdate) -> None:
+def update_speaker_voice_mapping(speaker_id: UUID, _payload: SpeakerVoiceMappingUpdate) -> None:
     not_implemented()
