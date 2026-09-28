@@ -1,16 +1,9 @@
-import logging
-import sys
-
 from rq import Worker
 
-from app.core.config import settings
+from app.core.logging import configure_logging
 from app.core.queue import DEFAULT_QUEUE_NAME, get_redis
 
-logging.basicConfig(
-    level=settings.log_level,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    stream=sys.stdout,
-)
+configure_logging()
 
 # RQ only moves jobs abandoned by a dead worker to the failed registry during
 # maintenance, and an idle worker only checks for maintenance when its blocking
