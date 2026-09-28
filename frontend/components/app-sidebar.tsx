@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LayoutDashboard, LogOut, User } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
+import { signOut } from "@/lib/auth-actions";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -30,15 +31,15 @@ export function AppSidebar() {
         ))}
       </nav>
       <Separator />
-      <div className="p-3">
-        <Link
-          href="/login"
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      <form action={signOut} className="p-3">
+        <button
+          type="submit"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <LogOut className="size-4" />
           Logout
-        </Link>
-      </div>
+        </button>
+      </form>
     </aside>
   );
 }
