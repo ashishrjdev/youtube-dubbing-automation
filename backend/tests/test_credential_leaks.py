@@ -29,7 +29,7 @@ def test_validation_errors_do_not_echo_submitted_values() -> None:
 
     assert response.status_code == 422
     assert PASSWORD not in response.text
-    assert [e["loc"] for e in response.json()["detail"]] == [
+    assert [e["loc"] for e in response.json()["details"]] == [
         ["body", "email"],
         ["body", "password"],
     ]
