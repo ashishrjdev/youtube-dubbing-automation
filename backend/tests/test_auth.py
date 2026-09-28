@@ -45,11 +45,14 @@ def fake_auth(monkeypatch: pytest.MonkeyPatch):
 
 @pytest.mark.parametrize("environment", ["development", "production"])
 def test_every_non_public_route_requires_auth(
-    monkeypatch: pytest.MonkeyPatch, environment: str
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, environment: str
 ) -> None:
-    monkeypatch.setattr(app_settings, "environment", environment)
+    if environment == "production":
+        request.getfixturevalue("production_settings")
+    else:
+        monkeypatch.setattr(app_settings, "environment", environment)
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, base_url="https://testserver")
     checked = 0
 
     for route_path, operations in app.openapi()["paths"].items():

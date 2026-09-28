@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     environment: Environment = "development"
     cors_origins: str = "http://localhost:3000"
+    # Read by uvicorn itself; the API refuses to start in production without it.
+    forwarded_allow_ips: str = ""
 
     supabase_url: str = ""
     supabase_anon_key: str = ""

@@ -8,11 +8,18 @@ from app import models as _models  # noqa: F401  register SQLAlchemy mappers
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.security import (
+    HTTPSRedirectExceptHealthMiddleware,
+    SecurityHeadersMiddleware,
+    check_production_https_config,
+)
 from app.routers import debug, generations, me, projects, script_lines, speakers
 
 
 def create_app() -> FastAPI:
     configure_logging()
+    if settings.is_production:
+        check_production_https_config(settings)
 
     app = FastAPI(
         title="dubbing-platform",
@@ -27,6 +34,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    if settings.is_production:
+        # Added last = outermost, so redirects also carry the security headers.
+        app.add_middleware(HTTPSRedirectExceptHealthMiddleware)
+        app.add_middleware(SecurityHeadersMiddleware)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(

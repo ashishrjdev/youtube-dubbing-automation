@@ -49,10 +49,13 @@ def test_optional_failure_and_sleep_jobs(monkeypatch: pytest.MonkeyPatch) -> Non
 
 @pytest.mark.parametrize("environment", ["staging", "production"])
 def test_debug_routes_absent_outside_development(
-    monkeypatch: pytest.MonkeyPatch, environment: str
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, environment: str
 ) -> None:
-    monkeypatch.setattr(app_settings, "environment", environment)
-    client = TestClient(create_app())
+    if environment == "production":
+        request.getfixturevalue("production_settings")
+    else:
+        monkeypatch.setattr(app_settings, "environment", environment)
+    client = TestClient(create_app(), base_url="https://testserver")
 
     assert client.post("/debug/test-job").status_code == 404
     assert client.get("/debug/test-job/some-id").status_code == 404

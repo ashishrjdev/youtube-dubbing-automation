@@ -33,6 +33,7 @@ cp .env.example frontend/.env.local
 - OpenAPI docs (`/docs`, `/redoc`): on in development and staging, off in production
 - CORS: origins come from `CORS_ORIGINS` (comma-separated). `*` is allowed only in development
 - Log level: `DEBUG` in development, `INFO` in staging and production
+- HTTPS (production only): HTTP→HTTPS redirect, security headers (HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`), and a startup check that refuses to boot if `CORS_ORIGINS` has an `http://` origin or `FORWARDED_ALLOW_IPS` is empty. See "Deployment Checklist".
 
 `.env` is never committed — only `.env.example` is. Copy it to `.env` (and `frontend/.env.local`) and fill in real values locally or in the host environment.
 
@@ -202,13 +203,48 @@ Every request body is a Pydantic model that extends `RequestModel` (`app/core/va
 
 | Service | Where secrets live | Variables |
 | --- | --- | --- |
-| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY` |
-| Frontend | Vercel project environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `API_URL` (server-only backend URL) |
+| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`. API service only: `FORWARDED_ALLOW_IPS` |
+| Frontend | Vercel project environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `API_URL` (server-only backend URL, must be `https://`) |
 
 - Anything prefixed `NEXT_PUBLIC_` is bundled into browser JavaScript and is public. Only the Supabase URL, the anon key, and the API URL may ever go there. The service key and all provider API keys stay on the backend.
 - `backend/.dockerignore` excludes `.env`, so images never contain secrets; the platform injects them at runtime.
 - `.env.example` is the source of truth for which variables exist. When you add a setting, add it there with an empty placeholder in the same change.
 - If a secret is ever committed or pasted somewhere public, **rotate it at the provider**. Removing it from the repo is not enough — it stays in git history.
+
+## Deployment Checklist
+
+### HTTPS
+
+TLS is terminated by the platform (Railway/Render for the API, Vercel for the frontend). The container itself only speaks plain HTTP, so the API needs to trust the platform proxy's `X-Forwarded-Proto` header to know the original request was HTTPS.
+
+- **Backend env vars (API service):**
+  - `ENVIRONMENT=production`
+  - `CORS_ORIGINS=https://your-frontend-domain`: `https://` only. The API refuses to start otherwise.
+  - `FORWARDED_ALLOW_IPS`: which connecting IPs uvicorn trusts to set `X-Forwarded-*`. The Dockerfile runs uvicorn with `--proxy-headers`, and uvicorn reads this variable directly. The API refuses to start in production if it's empty. Without it, every request looks like `http` and the HTTPS redirect sends the browser in a loop.
+- **What value to use for `FORWARDED_ALLOW_IPS`:**
+  - **Railway / Render: `*`.** Neither platform publishes its proxy IP ranges. Public traffic can only reach the container through the platform's edge proxy, which sets these headers itself, so trusting any connecting IP is safe *on these platforms*.
+  - **Anything where the container port is publicly reachable (a VM, bare Docker host, etc.):** never `*`. Anyone could send `X-Forwarded-For` and spoof their IP. Set it to the reverse proxy's IP or CIDR (e.g. `10.0.0.0/8`), or `127.0.0.1` if the proxy runs on the same host.
+  - Even with `*`, don't use `X-Forwarded-For` for security decisions (rate limiting, allowlists) on Railway. Use `X-Real-IP`, which Railway always overwrites.
+- **Health checks:** point the platform's health check at `/health`. It's exempt from the HTTPS redirect because health checks hit the container directly over plain HTTP.
+- **Frontend:** Vercel serves HTTPS and redirects HTTP itself. `next.config.ts` adds the same security headers in production builds. `API_URL` must be set, and must be `https://` on Vercel production, or backend calls fail loudly.
+- **Local check of the production header logic:** no TLS needed. Use real values that pass the startup checks:
+  ```bash
+  cd backend
+  ENVIRONMENT=production CORS_ORIGINS=https://app.example.com FORWARDED_ALLOW_IPS=127.0.0.1 \
+    uvicorn app.main:app --port 8001 --proxy-headers
+  curl -I http://localhost:8001/health                                  # 200 + security headers
+  curl -I http://localhost:8001/me                                      # 307 -> https://localhost:8001/me
+  curl -I -H 'X-Forwarded-Proto: https' http://localhost:8001/me        # 401, no redirect (trusted proxy)
+  ```
+
+**After the first real deploy**, verify HTTPS end-to-end:
+
+```bash
+curl -I http://your-api-domain/me        # expect 301/307/308 to https://
+curl -I https://your-api-domain/health   # expect 200 with Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy
+curl -I http://your-frontend-domain/     # expect redirect to https:// (Vercel)
+curl -I https://your-frontend-domain/    # expect the same four security headers
+```
 
 ## Tests
 
