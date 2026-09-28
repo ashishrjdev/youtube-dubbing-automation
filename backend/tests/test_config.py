@@ -41,8 +41,8 @@ def test_docs_enabled_outside_production(monkeypatch: pytest.MonkeyPatch) -> Non
     assert client.get("/redoc").status_code == 200
 
 
-def test_docs_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(app_settings, "environment", "production")
-    client = TestClient(create_app())
+@pytest.mark.usefixtures("production_settings")
+def test_docs_disabled_in_production() -> None:
+    client = TestClient(create_app(), base_url="https://testserver")
     assert client.get("/docs").status_code == 404
     assert client.get("/redoc").status_code == 404

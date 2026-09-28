@@ -1,6 +1,18 @@
 import { createServerSupabaseClient } from "@/lib/supabase";
 
-const API_URL = (process.env.API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+const DEV_API_URL = "http://localhost:8000";
+
+function apiUrl(): string {
+  const configured = process.env.API_URL?.trim().replace(/\/+$/, "");
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") throw new Error("API_URL is not set");
+    return DEV_API_URL;
+  }
+  if (process.env.VERCEL_ENV === "production" && !configured.startsWith("https://")) {
+    throw new Error("API_URL must use https:// in production");
+  }
+  return configured;
+}
 
 function unauthorized(): Response {
   return Response.json({ detail: "Not authenticated" }, { status: 401 });
@@ -14,8 +26,9 @@ function unauthorized(): Response {
  * the 401 is returned so the caller can send the user to /login.
  */
 export async function backendFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const url = new URL(`${API_URL}/${path.replace(/^\/+/, "")}`);
-  if (url.origin !== new URL(API_URL).origin) {
+  const base = apiUrl();
+  const url = new URL(`${base}/${path.replace(/^\/+/, "")}`);
+  if (url.origin !== new URL(base).origin) {
     throw new Error(`Refusing to send credentials to ${url.origin}`);
   }
 
