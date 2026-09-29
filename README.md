@@ -18,11 +18,17 @@ cp .env.example .env
 
 Fill in every value in `.env`. Comments in `.env.example` point to the dashboard where each key is issued (Supabase, AssemblyAI or Deepgram, OpenAI, ElevenLabs).
 
-Copy the `NEXT_PUBLIC_*` values into `frontend/.env.local` as well:
+The frontend needs its own `frontend/.env.local`, because Next.js only reads env files from `frontend/`, not the repo root. Put **only** these three variables in it, never the service key or provider API keys:
 
 ```bash
-cp .env.example frontend/.env.local
+cat > frontend/.env.local <<'EOF'
+NEXT_PUBLIC_SUPABASE_URL=        # same value as SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=   # same value as SUPABASE_ANON_KEY
+API_URL=http://localhost:8000
+EOF
 ```
+
+Restart `npm run dev` after editing it.
 
 `REDIS_URL` for processes running in Compose should be `redis://redis:6379/0`. For host-side tools talking to the published Redis port, use `redis://localhost:6379/0`.
 
@@ -35,7 +41,7 @@ cp .env.example frontend/.env.local
 - Log level: `DEBUG` in development, `INFO` in staging and production
 - HTTPS (production only): HTTP→HTTPS redirect, security headers (HSTS, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`), and a startup check that refuses to boot if `CORS_ORIGINS` has an `http://` origin or `FORWARDED_ALLOW_IPS` is empty. See "Deployment Checklist".
 
-`.env` is never committed — only `.env.example` is. Copy it to `.env` (and `frontend/.env.local`) and fill in real values locally or in the host environment.
+`.env` is never committed — only `.env.example` is. Copy it to `.env` (and create `frontend/.env.local` as above) and fill in real values locally or in the host environment.
 
 ## Running locally
 
@@ -73,6 +79,20 @@ npm run dev
 ```
 
 App: [http://localhost:3000](http://localhost:3000)
+
+### Design system
+
+Every screen uses the "Fluent Logic" design system from the Stitch mockups. Reuse these pieces instead of styling screens one by one:
+
+- **Tokens** (`app/globals.css`): the palette is mapped onto shadcn's semantic colors (`primary`, `muted-foreground`, `border`, `destructive`, ...), so shadcn components match automatically. Extra tokens include `surface-container-*`, `primary-container` (hover blue), `on-surface-variant`, and `error-container`. The type scale is `text-h1`, `text-h2`, `text-h3`, `text-body-lg`, `text-body-md`, `text-body-sm`, `text-label-md` and `text-label-sm`, each with its line height and weight built in. The font is Inter. Radius is 8px (`rounded-lg`) for controls and 16px (`rounded-2xl`) for content cards. Elevation uses `shadow-card` (cards and outline buttons), `shadow-card-hover`, and `shadow-button` (primary buttons). Primary buttons use the blue-to-indigo gradient (`from-primary to-brand-indigo`). The sidebar is white with a right border.
+- **Brand:** `lib/brand.ts` (`APP_NAME`, `APP_TAGLINE`) and `BrandLogo` / `BrandMark` (`components/brand-logo.tsx`).
+- **Primitives** (`components/ui/`): `Button` (`size="lg"` for full-width form buttons), `ButtonLink` (a Next.js `Link` styled as a button), `Input`, `Label`, `Card`, `Badge` (for statuses such as "Coming soon").
+- **Links:** links are always blue so they read as clickable. Use `TextLink` (`variant="primary"` for calls to action, `variant="subtle"` for secondary links like "Back to log in"); never style a link with a grey or black text color.
+- **Forms:** `FormField` (label, hint, and an announced error message), `FormAlert` (form-level error), and the `useFormFields` hook (`hooks/use-form-fields.ts`), which shows inline errors after blur or submit and focuses the first invalid field.
+- **Auth / centered screens:** `AuthCard` (optional icon badge, title, description, footer) inside the `(auth)` layout, a split screen with a brand panel on desktop and a single column on mobile. Use `PasswordStrengthMeter` for new-password fields.
+- **App screens:** the `(app)` layout provides the sidebar (a drawer on mobile, `components/app-shell/`). Start each page with `PageHeader` (title, description, actions, optional back link), and use `EmptyState` for empty lists. Show one primary action per screen: the sidebar's "New project" is global, and page-level "New project" buttons appear only where they are the main next step (the empty dashboard).
+- **"How it works" modal:** `HowItWorksProvider` (in the `(app)` layout) renders the step slider (`HowItWorks`, steps in `components/workflow-steps.tsx`) in a modal. It opens automatically once per account: `markHowItWorksSeen` stores `how_it_works_seen` in Supabase `user_metadata` plus a cookie (the JWT claims only pick up the metadata on the next token refresh). Reopen it anywhere with `useOpenHowItWorks()` or `HowItWorksButton`; the sidebar has a "How it works" link under Help.
+- **Mobile:** design mobile-first; grids collapse to one column below `sm`/`md`, and the sidebar is replaced by a top bar with a menu button below `lg`.
 
 ## Background Jobs
 
@@ -144,6 +164,22 @@ curl -X POST "http://localhost:8000/debug/storage-test?keep=true"
 ```
 
 `private_bucket_verified: true` in the response means the signed URL worked and both unsigned URLs were rejected.
+
+## Supabase Auth Setup
+
+One-time dashboard steps (Supabase → **Authentication**):
+
+1. **Sign In / Providers → Email:** turn on **Confirm email**, so new accounts start unverified.
+2. **Sign In / Providers → Email:** set **Minimum password length** to `8`.
+3. **URL Configuration:**
+   - **Site URL:** `http://localhost:3000` for now. Change it to the production frontend URL at deploy time.
+   - **Redirect URLs:** add `http://localhost:3000/**`. Add the production equivalent (`https://your-domain/**`) at deploy time.
+
+Notes:
+
+- Supabase's built-in email sender only allows a handful of emails per hour for the whole project. Fine for local testing, but set up custom SMTP (Authentication → Emails → SMTP Settings) before real users sign up.
+- **Verification links** land on `/auth/confirm` (`app/auth/confirm/route.ts`). It exchanges Supabase's `?code=` for a session cookie, then sends the user to `/verify-email?status=verified`. If the link was opened in a different browser, the email is still verified but there's no session, so it uses `status=verified-login`. Failed links go to `status=expired` or `status=invalid`. `http://localhost:3000/**` in Redirect URLs already covers this route.
+- **Signup never reveals whether an email is registered.** With "Confirm email" on, Supabase answers a duplicate signup with a fake success and sends no email. The `signUp` Server Action (`lib/auth-actions.ts`) also treats `user_already_exists`, `email_exists`, and `over_email_send_rate_limit` as success, and every path ends on `/verify-email`. Keep it that way: don't add an "email already exists" message.
 
 ## Auth and Sessions
 

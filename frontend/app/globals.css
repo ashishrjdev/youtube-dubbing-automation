@@ -4,10 +4,70 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * "Fluent Logic" design system (see DESIGN.md from Stitch).
+ * shadcn semantic tokens (primary, muted, border, ...) are mapped to it in
+ * :root below, so every shadcn component picks it up automatically. The extra
+ * Material-style tokens here are for cases the semantic set doesn't cover.
+ */
+@theme {
+  --color-brand-indigo: #4648d4; /* secondary */
+  --color-primary-container: #2170e4;
+  --color-primary-fixed: #d8e2ff;
+  --color-on-primary-fixed: #001a42;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #424754;
+  --color-outline: #727785;
+  --color-outline-variant: #c2c6d6;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-tertiary-fixed: #ffdcc6;
+  --color-on-tertiary-fixed: #311400;
+
+  /* Type scale: text-h1 ... text-label-sm (size, line height, weight, tracking). */
+  --text-h1: 36px;
+  --text-h1--line-height: 44px;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 700;
+  --text-h1-mobile: 28px;
+  --text-h1-mobile--line-height: 34px;
+  --text-h1-mobile--font-weight: 700;
+  --text-h2: 30px;
+  --text-h2--line-height: 38px;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h2--font-weight: 700;
+  --text-h3: 24px;
+  --text-h3--line-height: 32px;
+  --text-h3--letter-spacing: -0.01em;
+  --text-h3--font-weight: 600;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+  --text-body-sm: 14px;
+  --text-body-sm--line-height: 20px;
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-label-md--font-weight: 600;
+  --text-label-sm: 12px;
+  --text-label-sm--line-height: 16px;
+  --text-label-sm--font-weight: 600;
+
+  /* Soft, layered elevation: shadow-card, shadow-card-hover, shadow-button. */
+  --shadow-card: 0 1px 2px 0 rgb(11 28 48 / 0.04), 0 2px 8px -2px rgb(11 28 48 / 0.06);
+  --shadow-card-hover: 0 2px 4px 0 rgb(11 28 48 / 0.04), 0 10px 24px -6px rgb(11 28 48 / 0.12);
+  --shadow-button: 0 1px 2px 0 rgb(0 88 190 / 0.18), 0 4px 12px -2px rgb(70 72 212 / 0.28);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -39,82 +99,84 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 4);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* 8px for buttons/inputs (rounded-lg); rounded-xl = 12px for cards. */
+  --radius: 0.5rem;
+
+  --background: #f8f9ff; /* surface */
+  --foreground: #0b1c30; /* on-surface */
+  --card: #ffffff; /* surface-container-lowest */
+  --card-foreground: #0b1c30;
+  --popover: #ffffff;
+  --popover-foreground: #0b1c30;
+  --primary: #0058be;
+  --primary-foreground: #ffffff;
+  --secondary: #eff4ff; /* surface-container-low */
+  --secondary-foreground: #0b1c30;
+  --muted: #eff4ff;
+  --muted-foreground: #424754; /* on-surface-variant */
+  --accent: #e5eeff; /* surface-container */
+  --accent-foreground: #0b1c30;
+  --destructive: #ba1a1a; /* error */
+  --border: #c2c6d6; /* outline-variant */
+  --input: #c2c6d6;
+  --ring: #0058be;
+  --chart-1: #0058be;
+  --chart-2: #4648d4;
+  --chart-3: #924700;
+  --chart-4: #2170e4;
+  --chart-5: #727785;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #424754;
+  --sidebar-primary: #0058be;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff4ff;
+  --sidebar-accent-foreground: #0058be;
+  --sidebar-border: #c2c6d6;
+  --sidebar-ring: #0058be;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0b1c30;
+  --foreground: #eaf1ff;
+  --card: #213145;
+  --card-foreground: #eaf1ff;
+  --popover: #213145;
+  --popover-foreground: #eaf1ff;
+  --primary: #adc6ff;
+  --primary-foreground: #001a42;
+  --secondary: #213145;
+  --secondary-foreground: #eaf1ff;
+  --muted: #213145;
+  --muted-foreground: #c2c6d6;
+  --accent: #213145;
+  --accent-foreground: #eaf1ff;
+  --destructive: #ffb4ab;
+  --border: #424754;
+  --input: #424754;
+  --ring: #adc6ff;
+  --chart-1: #adc6ff;
+  --chart-2: #c0c1ff;
+  --chart-3: #ffb786;
+  --chart-4: #d8e2ff;
+  --chart-5: #c2c6d6;
+  --sidebar: #0b1c30;
+  --sidebar-foreground: #c2c6d6;
+  --sidebar-primary: #adc6ff;
+  --sidebar-primary-foreground: #001a42;
+  --sidebar-accent: #213145;
+  --sidebar-accent-foreground: #adc6ff;
+  --sidebar-border: #424754;
+  --sidebar-ring: #adc6ff;
 }
 
 @layer base {

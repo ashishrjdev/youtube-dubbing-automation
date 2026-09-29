@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
+
+import { LegalPage } from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+};
+
 export default function TermsPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Terms of service</h1>
-    </div>
+    <LegalPage
+      title="Terms of Service"
+      summary="The rules for using the service, your content, and our responsibilities."
+    />
   );
 }
