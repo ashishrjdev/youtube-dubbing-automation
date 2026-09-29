@@ -1,7 +1,11 @@
+import type { Metadata } from "next";
+
+import { ForgotPasswordFlow } from "@/components/auth/forgot-password-form";
+
+export const metadata: Metadata = {
+  title: "Reset your password",
+};
+
 export default function ForgotPasswordPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Forgot password</h1>
-    </div>
-  );
+  return <ForgotPasswordFlow />;
 }

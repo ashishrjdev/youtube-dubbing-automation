@@ -13,12 +13,21 @@ const cookieOptions: CookieOptionsWithName = {
   path: "/",
 };
 
+function requiredEnv(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(
+      `${name} is not set. Add it to frontend/.env.local (Next.js doesn't read the repo-root .env) and restart the dev server.`,
+    );
+  }
+  return value;
+}
+
 function supabaseUrl(): string {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  return requiredEnv("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
 }
 
 function supabaseAnonKey(): string {
-  return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  return requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 /** Server Component / Route Handler / Server Action Supabase client. */
