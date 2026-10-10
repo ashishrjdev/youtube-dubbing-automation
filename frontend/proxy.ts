@@ -1,12 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeRedirectPath } from "@/lib/auth-validation";
 import { createProxySupabaseClient } from "@/lib/supabase";
 
-/** App areas that need a session; signed-out visitors are sent to /login. */
-const PROTECTED_PREFIXES = ["/dashboard", "/projects", "/account"];
+/** Pages anyone can open. Everything else needs a session. */
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+  "/terms",
+  "/privacy",
+];
+/**
+ * Prefixes that handle auth themselves: /auth/confirm runs before a session
+ * exists, and /api/backend answers 401 rather than redirecting to an HTML page.
+ */
+const SELF_AUTHENTICATED_PREFIXES = ["/auth/", "/api/"];
+/** Signed-in visitors skip these and go straight into the app. */
+const SIGNED_OUT_ONLY = ["/login", "/signup"];
 
-function isProtected(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+function matches(pathname: string, paths: string[]): boolean {
+  return paths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
 export async function proxy(request: NextRequest) {
@@ -19,20 +35,35 @@ export async function proxy(request: NextRequest) {
 
   // Refreshes an expired access token using the refresh token and writes the
   // rotated tokens back as httpOnly cookies before the page/route handler runs.
-  const { data } = await supabase.auth.getClaims();
+  // getUser() asks Supabase Auth, unlike getClaims(), which only checks the JWT
+  // locally and would let a revoked session or deleted user through until the
+  // token expires. With no session cookie it returns without a network call.
+  const { data } = await supabase.auth.getUser();
+  const signedIn = Boolean(data.user);
 
-  const { pathname, search } = request.nextUrl;
-  if (!data?.claims && isProtected(pathname)) {
-    const login = request.nextUrl.clone();
-    login.pathname = "/login";
-    login.search = `?next=${encodeURIComponent(pathname + search)}`;
-    const redirect = NextResponse.redirect(login);
-    // Carry over any cookie changes (e.g. a failed refresh clearing the session).
+  /** `path` is same-origin and may carry its own query string. */
+  const redirectTo = (path: string) => {
+    const redirect = NextResponse.redirect(new URL(path, request.nextUrl.origin));
+    // Carry over any cookie changes (e.g. a refreshed or cleared session).
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
+  };
+
+  const { pathname, search, searchParams } = request.nextUrl;
+
+  if (SELF_AUTHENTICATED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return response;
+
+  if (signedIn) {
+    if (pathname === "/") return redirectTo("/dashboard");
+    if (matches(pathname, SIGNED_OUT_ONLY)) {
+      return redirectTo(safeRedirectPath(searchParams.get("next")));
+    }
+    return response;
   }
 
-  return response;
+  if (matches(pathname, PUBLIC_PATHS)) return response;
+  if (pathname === "/") return redirectTo("/login");
+  return redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
 }
 
 export const config = {

@@ -5,14 +5,14 @@ import { LogOut, User } from "lucide-react";
 import Link from "next/link";
 
 import { signOut } from "@/lib/auth-actions";
-import { initialsFromEmail } from "@/lib/initials";
+import { initialsFor } from "@/lib/initials";
 
 const itemClass =
   "flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2 text-body-sm text-foreground outline-none select-none data-[highlighted]:bg-surface-container-low";
 
 /** Avatar button in the app header with Account and Log out. */
-export function UserMenu({ email }: { email: string | null }) {
-  const initials = initialsFromEmail(email);
+export function UserMenu({ email, fullName }: { email: string | null; fullName: string | null }) {
+  const initials = initialsFor(fullName, email);
 
   return (
     <Menu.Root>
@@ -38,8 +38,17 @@ export function UserMenu({ email }: { email: string | null }) {
                 {initials}
               </span>
               <div className="min-w-0">
-                <p className="text-label-sm text-muted-foreground">Signed in as</p>
-                <p className="truncate text-body-sm font-medium text-foreground">{email ?? "Unknown user"}</p>
+                {fullName ? (
+                  <>
+                    <p className="truncate text-body-sm font-semibold text-foreground">{fullName}</p>
+                    <p className="truncate text-label-sm font-normal text-muted-foreground">{email ?? "Unknown user"}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-label-sm text-muted-foreground">Signed in as</p>
+                    <p className="truncate text-body-sm font-medium text-foreground">{email ?? "Unknown user"}</p>
+                  </>
+                )}
               </div>
             </div>
             <Menu.Separator className="my-1 h-px bg-border/70" />

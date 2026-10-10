@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -9,10 +10,11 @@ import {
   type SignupFieldErrors,
   safeRedirectPath,
   validateEmail,
+  validateFullName,
   validateLogin,
   validateSignup,
 } from "@/lib/auth-validation";
-import { getCurrentUser } from "@/lib/current-user";
+import { FULL_NAME_KEY, getCurrentUser } from "@/lib/current-user";
 import { createServerSupabaseClient } from "@/lib/supabase";
 import {
   PENDING_VERIFICATION_COOKIE,
@@ -20,7 +22,8 @@ import {
 } from "@/lib/verification";
 
 const GENERIC_ERROR = "Something went wrong, please try again.";
-const RATE_LIMITED = "Too many attempts. Please wait a few minutes and try again.";
+const RATE_LIMITED = "Too many attempts, please try again later.";
+const INVALID_CREDENTIALS = "Invalid email or password.";
 const INVALID_EMAIL = "Enter a valid email address, like name@example.com.";
 
 async function requestOrigin(): Promise<string> {
@@ -74,11 +77,12 @@ const SIGNUP_INDISTINGUISHABLE_FROM_SUCCESS = new Set([
 ]);
 
 export async function signUp(_prev: SignUpState, formData: FormData): Promise<SignUpState> {
+  const fullName = String(formData.get("fullName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
-  const fieldErrors = validateSignup({ email, password, confirmPassword });
+  const fieldErrors = validateSignup({ fullName, email, password, confirmPassword });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   try {
@@ -86,7 +90,10 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${await requestOrigin()}/auth/confirm` },
+      options: {
+        emailRedirectTo: `${await requestOrigin()}/auth/confirm`,
+        data: { [FULL_NAME_KEY]: fullName },
+      },
     });
 
     if (error && !SIGNUP_INDISTINGUISHABLE_FROM_SUCCESS.has(error.code ?? "")) {
@@ -112,6 +119,8 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
 export type SignInState = {
   fieldErrors?: LoginFieldErrors;
   formError?: string;
+  /** Correct password, but the email isn't confirmed yet. */
+  unverified?: boolean;
 };
 
 export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
@@ -122,34 +131,67 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
   const fieldErrors = validateLogin({ email, password });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  let destination = next;
   try {
     const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       logAuthError("signIn", error);
-      // Same message for "no such user" and "wrong password" (Supabase returns
-      // invalid_credentials for both), so login can't be used to probe emails.
-      if (error.code === "invalid_credentials") {
-        return { fieldErrors: { password: "Invalid email or password. Please try again." } };
-      }
-      // Only reachable with the correct password, so it reveals nothing new.
+      // Supabase returns invalid_credentials for unknown emails, wrong passwords,
+      // and unconfirmed accounts with a wrong password alike, so login can't be
+      // used to probe which emails are registered.
+      if (error.code === "invalid_credentials") return { formError: INVALID_CREDENTIALS };
+      // Only returned after the password matched, so it reveals nothing new.
       if (error.code === "email_not_confirmed") {
         await rememberPendingVerification(email);
-        destination = "/verify-email";
-      } else if (error.code === "over_request_rate_limit") {
-        return { formError: RATE_LIMITED };
-      } else {
-        return { formError: GENERIC_ERROR };
+        return { unverified: true };
       }
+      if (error.code === "over_request_rate_limit" || error.status === 429) {
+        return { formError: RATE_LIMITED };
+      }
+      return { formError: GENERIC_ERROR };
     }
   } catch {
     console.error("signIn failed: unexpected exception");
     return { formError: GENERIC_ERROR };
   }
 
-  redirect(destination);
+  redirect(next);
+}
+
+export type UpdateProfileState = {
+  fieldErrors?: FieldErrors<{ fullName: string }>;
+  formError?: string;
+  saved?: boolean;
+};
+
+export async function updateProfile(
+  _prev: UpdateProfileState,
+  formData: FormData,
+): Promise<UpdateProfileState> {
+  const fullName = String(formData.get("fullName") ?? "").trim();
+  const fullNameError = validateFullName(fullName);
+  if (fullNameError) return { fieldErrors: { fullName: fullNameError } };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    // Fails with no session, so a signed-out request can't change anything.
+    const { error } = await supabase.auth.updateUser({ data: { [FULL_NAME_KEY]: fullName } });
+    if (error) {
+      logAuthError("updateProfile", error);
+      if (error.code === "over_request_rate_limit" || error.status === 429) {
+        return { formError: RATE_LIMITED };
+      }
+      return { formError: GENERIC_ERROR };
+    }
+  } catch {
+    console.error("updateProfile failed: unexpected exception");
+    return { formError: GENERIC_ERROR };
+  }
+
+  // The header avatar and menu are rendered by the (app) layout.
+  revalidatePath("/", "layout");
+  return { saved: true };
 }
 
 export type PasswordResetRequestState = {

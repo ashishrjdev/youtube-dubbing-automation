@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <SidebarContent />
         </aside>
         <div className="flex min-h-svh min-w-0 flex-1 flex-col">
-          <AppHeader email={email} />
+          <AppHeader email={email} fullName={user?.fullName ?? null} />
           {user && !user.emailVerified ? <VerifyEmailBanner email={email} /> : null}
           <main className={cn(SHELL_CONTAINER, "flex-1 py-6 sm:py-8 lg:py-10")}>
             {children}
