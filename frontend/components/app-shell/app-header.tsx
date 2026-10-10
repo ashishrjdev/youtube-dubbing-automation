@@ -18,7 +18,7 @@ const iconButton =
   "flex size-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors outline-none hover:bg-surface-container-low hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring";
 
 /** Sticky top bar: page title (and back link), help, and user menu; plus the nav drawer below lg. */
-export function AppHeader({ email }: { email: string | null }) {
+export function AppHeader({ email, fullName }: { email: string | null; fullName: string | null }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const heading = pageHeading(usePathname());
   const openHowItWorks = useOpenHowItWorks();
@@ -87,7 +87,7 @@ export function AppHeader({ email }: { email: string | null }) {
               </Tooltip.Positioner>
             </Tooltip.Portal>
           </Tooltip.Root>
-          <UserMenu email={email} />
+          <UserMenu email={email} fullName={fullName} />
         </div>
       </div>
     </header>

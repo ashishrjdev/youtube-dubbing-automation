@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { KeyRound, LogOut } from "lucide-react";
 
+import { ProfileForm } from "@/components/account/profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { signOut } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/current-user";
-import { initialsFromEmail } from "@/lib/initials";
+import { initialsFor } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -43,22 +44,29 @@ function SettingsSection({
 }
 
 export default async function AccountPage() {
-  const email = (await getCurrentUser())?.email ?? null;
+  const user = await getCurrentUser();
+  const email = user?.email ?? null;
+  const fullName = user?.fullName ?? null;
 
   return (
     <div className="grid gap-8">
-      <SettingsSection title="Profile" description="The email address you sign in with.">
-        <div className="flex items-center gap-4">
-          <span
-            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-brand-indigo text-body-lg font-semibold text-white"
-            aria-hidden="true"
-          >
-            {initialsFromEmail(email)}
-          </span>
-          <div className="min-w-0">
-            <p className="text-label-sm text-muted-foreground">Email</p>
-            <p className="truncate text-body-md font-medium text-foreground">{email ?? "Unknown"}</p>
+      <SettingsSection title="Profile" description="Your name and the email address you sign in with.">
+        <div className="grid gap-6">
+          <div className="flex items-center gap-4">
+            <span
+              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-primary to-brand-indigo text-body-lg font-semibold text-white"
+              aria-hidden="true"
+            >
+              {initialsFor(fullName, email)}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-body-md font-semibold text-foreground">
+                {fullName ?? "Add your name"}
+              </p>
+              <p className="truncate text-body-sm text-muted-foreground">{email ?? "Unknown"}</p>
+            </div>
           </div>
+          <ProfileForm fullName={fullName} email={email} />
         </div>
       </SettingsSection>
 

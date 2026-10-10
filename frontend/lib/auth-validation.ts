@@ -6,7 +6,10 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type FieldErrors<T> = Partial<Record<keyof T, string>>;
 
+export const FULL_NAME_MAX_LENGTH = 100;
+
 export type SignupFields = {
+  fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -25,6 +28,15 @@ export function validateEmail(email: string): string | undefined {
   if (value.length > EMAIL_MAX_LENGTH || !EMAIL_PATTERN.test(value)) {
     return "Enter a valid email address, like name@example.com.";
   }
+}
+
+export function validateFullName(fullName: string): string | undefined {
+  const value = fullName.trim();
+  if (!value) return "Enter your full name.";
+  if (value.length > FULL_NAME_MAX_LENGTH) {
+    return `Full name must be at most ${FULL_NAME_MAX_LENGTH} characters.`;
+  }
+  if (/[\u0000-\u001f\u007f]/.test(value)) return "Full name contains characters that aren't allowed.";
 }
 
 export function validatePassword(password: string): string | undefined {
@@ -54,6 +66,7 @@ function compact<T>(errors: FieldErrors<T>): FieldErrors<T> {
 
 export function validateSignup(fields: SignupFields): SignupFieldErrors {
   return compact<SignupFields>({
+    fullName: validateFullName(fields.fullName),
     email: validateEmail(fields.email),
     password: validatePassword(fields.password),
     confirmPassword: validateConfirmPassword(fields.password, fields.confirmPassword),
@@ -93,5 +106,15 @@ export function passwordStrength(password: string): PasswordStrength {
 export function safeRedirectPath(next: unknown, fallback = "/dashboard"): string {
   if (typeof next !== "string" || !next.startsWith("/")) return fallback;
   if (next.startsWith("//") || next.startsWith("/\\")) return fallback;
-  return next;
+  // Browsers drop tabs/newlines and treat "\" as "/", so "/\t/evil.com" would
+  // become "//evil.com": resolve it the same way and require the origin to stay put.
+  const base = "http://same-origin.invalid";
+  let url: URL;
+  try {
+    url = new URL(next, base);
+  } catch {
+    return fallback;
+  }
+  if (url.origin !== base) return fallback;
+  return `${url.pathname}${url.search}${url.hash}`;
 }

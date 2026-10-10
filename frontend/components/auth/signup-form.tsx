@@ -9,12 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFormFields } from "@/hooks/use-form-fields";
 import { signUp, type SignUpState } from "@/lib/auth-actions";
-import { PASSWORD_MIN_LENGTH, validateSignup } from "@/lib/auth-validation";
+import { FULL_NAME_MAX_LENGTH, PASSWORD_MIN_LENGTH, validateSignup } from "@/lib/auth-validation";
 
 export function SignupForm() {
   const [state, formAction, isPending] = useActionState<SignUpState, FormData>(signUp, {});
   const { values, errorFor, register, onSubmit } = useFormFields(
-    { email: "", password: "", confirmPassword: "" },
+    { fullName: "", email: "", password: "", confirmPassword: "" },
     validateSignup,
     state,
   );
@@ -22,6 +22,18 @@ export function SignupForm() {
   return (
     <form action={formAction} onSubmit={onSubmit} noValidate className="grid gap-4">
       <FormAlert message={isPending ? undefined : state.formError} />
+
+      <FormField id="fullName" label="Full name" error={errorFor("fullName")}>
+        <Input
+          id="fullName"
+          type="text"
+          autoComplete="name"
+          maxLength={FULL_NAME_MAX_LENGTH}
+          required
+          aria-describedby={fieldDescribedBy("fullName")}
+          {...register("fullName")}
+        />
+      </FormField>
 
       <FormField id="email" label="Email address" error={errorFor("email")}>
         <Input
