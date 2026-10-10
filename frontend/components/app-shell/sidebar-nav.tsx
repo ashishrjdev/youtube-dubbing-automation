@@ -1,10 +1,9 @@
 "use client";
 
-import { CircleHelp, LayoutDashboard, User, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, User, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useOpenHowItWorks } from "@/components/how-it-works-dialog";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -19,8 +18,8 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    // Project pages live under the dashboard; /projects/new has its own CTA.
-    isActive: (p) => p === "/dashboard" || (p.startsWith("/projects/") && p !== "/projects/new"),
+    // Project pages live under the dashboard.
+    isActive: (p) => p === "/dashboard" || p.startsWith("/projects/"),
   },
   {
     href: "/account",
@@ -32,7 +31,6 @@ const NAV_ITEMS: NavItem[] = [
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const openHowItWorks = useOpenHowItWorks();
 
   return (
     <nav aria-label="Main" className="grid gap-1">
@@ -69,19 +67,6 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           </Link>
         );
       })}
-
-      <p className="px-3 pt-5 pb-2 text-label-sm tracking-wider text-outline uppercase">Help</p>
-      <button
-        type="button"
-        onClick={() => {
-          onNavigate?.();
-          openHowItWorks();
-        }}
-        className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-label-md text-primary transition-colors outline-none hover:bg-surface-container-low focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <CircleHelp className="size-5" aria-hidden="true" />
-        How it works
-      </button>
     </nav>
   );
 }

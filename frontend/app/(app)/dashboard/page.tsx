@@ -3,7 +3,6 @@ import { Clapperboard, Plus } from "lucide-react";
 
 import { EmptyState } from "@/components/empty-state";
 import { HowItWorksButton } from "@/components/how-it-works-dialog";
-import { PageHeader } from "@/components/page-header";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export const metadata: Metadata = {
@@ -13,11 +12,6 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
   return (
     <div className="grid gap-8">
-      <PageHeader
-        title="Projects"
-        description="Turn any video into a natural-sounding dub, one project at a time."
-      />
-
       <EmptyState
         icon={Clapperboard}
         title="No projects yet"

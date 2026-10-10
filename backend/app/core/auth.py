@@ -76,3 +76,21 @@ def get_current_user(
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def require_verified_email(user: CurrentUser) -> User:
+    """Reject users whose email isn't confirmed yet.
+
+    Server-side backstop for the frontend gate: `email_confirmed_at` comes from
+    the same Supabase Auth lookup as `get_current_user`, so it can't be forged
+    by the client.
+    """
+    if user.email_confirmed_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not verified",
+        )
+    return user
+
+
+VerifiedUser = Annotated[User, Depends(require_verified_email)]

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { WORKFLOW_STEPS } from "@/components/workflow-steps";
 
@@ -13,14 +12,10 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
 
   return (
     <div className="grid gap-8">
-      <PageHeader
-        back={{ href: "/dashboard", label: "Back to projects" }}
-        title="Project"
-        description={
-          <span className="font-mono text-body-sm break-all">{id}</span>
-        }
-        actions={<Badge variant="secondary">Details coming soon</Badge>}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-body-sm break-all text-muted-foreground">{id}</p>
+        <Badge variant="secondary">Details coming soon</Badge>
+      </div>
 
       <section
         aria-labelledby="pipeline"

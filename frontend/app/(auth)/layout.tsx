@@ -12,8 +12,8 @@ const FEATURES = [
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-full flex-1 bg-background">
-      <aside className="relative hidden w-[44%] max-w-[640px] shrink-0 flex-col justify-between overflow-hidden bg-linear-to-br from-primary via-primary-container to-brand-indigo p-10 text-white lg:flex xl:p-14">
+    <div className="flex min-h-full flex-1 bg-card">
+      <aside className="relative hidden w-1/2 shrink-0 flex-col justify-between overflow-hidden bg-linear-to-br from-primary via-primary-container to-brand-indigo p-10 text-white lg:flex xl:p-14">
         <div
           className="pointer-events-none absolute -top-32 -right-24 size-96 rounded-full bg-white/10 blur-3xl"
           aria-hidden="true"
@@ -27,9 +27,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <BrandLogo inverted tagline />
         </Link>
 
-        <div className="relative grid gap-8">
+        <div className="relative grid max-w-xl gap-8">
           <div className="grid gap-4">
-            <h2 className="text-h1 text-balance text-white">Dub any video into any language.</h2>
+            <h2 className="text-h1 text-balance text-white xl:text-[44px] xl:leading-[52px]">
+              Dub any video into any language.
+            </h2>
             <p className="max-w-md text-body-lg text-white/80">
               From transcript to finished voice track in one focused workspace.
             </p>
@@ -48,7 +50,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Illustration only. */}
         <div
-          className="relative rounded-2xl bg-white/10 p-5 ring-1 ring-white/20 backdrop-blur-md"
+          className="relative max-w-xl rounded-2xl bg-white/10 p-5 ring-1 ring-white/20 backdrop-blur-md"
           aria-hidden="true"
         >
           <div className="mb-4 flex items-center justify-between">
@@ -67,20 +69,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      <main className="relative flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6">
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-linear-to-b from-primary-fixed/60 to-transparent lg:hidden"
-          aria-hidden="true"
-        />
-        <div className="relative w-full max-w-[440px]">
-          <Link
-            href="/"
-            className="mx-auto mb-8 flex w-fit rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
-          >
-            <BrandLogo />
-          </Link>
-          {children}
-        </div>
+      <main className="flex flex-1 flex-col items-center bg-card px-5 pt-6 pb-10 sm:justify-center sm:px-8 sm:py-12 lg:px-12">
+        <div className="w-full max-w-[420px]">{children}</div>
       </main>
     </div>
   );

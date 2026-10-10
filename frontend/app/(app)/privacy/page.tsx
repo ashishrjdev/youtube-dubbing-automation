@@ -7,10 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return (
-    <LegalPage
-      title="Privacy Policy"
-      summary="What data we collect, how we use it, and the choices you have."
-    />
-  );
+  return <LegalPage title="Privacy Policy" />;
 }

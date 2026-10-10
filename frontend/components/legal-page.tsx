@@ -1,13 +1,11 @@
 import { FileText } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
 import { APP_NAME } from "@/lib/brand";
 
-/** Shared shell for Terms / Privacy until the real documents land (LEGAL tasks). */
-export function LegalPage({ title, summary }: { title: string; summary: string }) {
+/** Shared body for Terms / Privacy until the real documents land (LEGAL tasks). */
+export function LegalPage({ title }: { title: string }) {
   return (
-    <div className="grid max-w-3xl gap-8">
-      <PageHeader title={title} description={summary} />
+    <div className="max-w-3xl">
       <article className="flex gap-4 rounded-2xl border border-border/70 bg-card p-6 shadow-card sm:p-8">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-fixed text-primary">
           <FileText className="size-5" aria-hidden="true" />

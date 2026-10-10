@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { FileAudio, Video, type LucideIcon } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
+import { getCurrentUser } from "@/lib/current-user";
 
 export const metadata: Metadata = {
   title: "New project",
@@ -23,15 +24,13 @@ const SOURCES: { icon: LucideIcon; title: string; description: string; hint: str
   },
 ];
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  // The app layout's banner explains why; the backend enforces this too.
+  const user = await getCurrentUser();
+  if (!user?.emailVerified) redirect("/dashboard");
+
   return (
     <div className="grid gap-8">
-      <PageHeader
-        back={{ href: "/dashboard", label: "Back to projects" }}
-        title="New project"
-        description="Choose where your source audio comes from."
-      />
-
       <div className="grid gap-4 md:grid-cols-2">
         {SOURCES.map(({ icon: Icon, title, description, hint }) => (
           <div

@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -39,7 +40,7 @@ INVALID_YOUTUBE_URLS = [
 def client() -> TestClient:
     app = create_app()
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
-        id=str(uuid4()), email="a@example.com"
+        id=str(uuid4()), email="a@example.com", email_confirmed_at=datetime.now(UTC)
     )
     return TestClient(app)
 
