@@ -1,11 +1,13 @@
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 
-import { Card } from "@/components/ui/card";
+import { BrandLogo } from "@/components/brand-logo";
 import { cn } from "@/lib/utils";
 
 /**
- * Centered card used by every auth / simple setup screen: optional icon badge,
- * title, description, body, and a footer for secondary links.
+ * Content block used by every auth / simple setup screen, sitting directly on
+ * the white half of the (auth) layout: optional icon badge, title,
+ * description, body, and a footer for secondary links.
  */
 export function AuthCard({
   title,
@@ -23,27 +25,32 @@ export function AuthCard({
   className?: string;
 }) {
   return (
-    <Card
-      className={cn(
-        "gap-7 rounded-2xl border-border/70 px-6 py-8 shadow-xl shadow-primary/5 sm:px-8 sm:py-10",
-        className,
-      )}
-    >
-      <header className={cn("grid gap-2", Icon && "justify-items-center text-center")}>
+    <div className={cn("flex flex-col gap-6 sm:gap-8", className)}>
+      {/* The desktop brand panel shows the logo; below lg it sits here, aligned with the content. */}
+      <Link
+        href="/"
+        className={cn(
+          "mb-4 flex w-fit rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring sm:mb-6 lg:hidden",
+          Icon && "self-center",
+        )}
+      >
+        <BrandLogo size="lg" />
+      </Link>
+      <header className={cn("grid gap-2 sm:gap-3", Icon && "justify-items-center text-center")}>
         {Icon ? (
-          <div className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-primary-fixed text-primary ring-8 ring-primary-fixed/40">
+          <div className="mb-2 flex size-14 items-center justify-center rounded-2xl bg-primary-fixed text-primary ring-8 ring-primary-fixed/40">
             <Icon className="size-7" strokeWidth={2} aria-hidden="true" />
           </div>
         ) : null}
-        <h1 className="text-h1-mobile text-foreground sm:text-h2">{title}</h1>
+        <h1 className="text-h1-mobile tracking-tight text-foreground sm:text-h1">{title}</h1>
         {description ? (
-          <div className="text-body-md text-muted-foreground">{description}</div>
+          <div className="text-body-md text-muted-foreground sm:text-body-lg">{description}</div>
         ) : null}
       </header>
       {children}
       {footer ? (
         <footer className="border-t border-border/70 pt-6 text-center text-body-sm">{footer}</footer>
       ) : null}
-    </Card>
+    </div>
   );
 }

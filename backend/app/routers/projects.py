@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from app.core.auth import VerifiedUser
 from app.core.stubs import not_implemented
 from app.core.validation import RequestModel, SourceRef, validate_youtube_url
 from app.models.project import ProjectStatus, SourceType
@@ -55,7 +56,7 @@ def list_projects() -> None:
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)
-def create_project(_payload: ProjectCreate) -> None:
+def create_project(_payload: ProjectCreate, _user: VerifiedUser) -> None:
     not_implemented()
 
 

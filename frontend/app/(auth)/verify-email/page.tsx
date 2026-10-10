@@ -1,63 +1,34 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CircleCheck, MailCheck, MailX, type LucideIcon } from "lucide-react";
+import { ArrowLeft, CircleCheck, MailCheck, MailX } from "lucide-react";
 
 import { AuthCard } from "@/components/auth/auth-card";
+import { RedirectAfter } from "@/components/auth/redirect-after";
+import { ResendVerificationForm } from "@/components/auth/resend-verification-form";
 import { TextLink } from "@/components/text-link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { ButtonLink } from "@/components/ui/button-link";
+import { getCurrentUser } from "@/lib/current-user";
+import { PENDING_VERIFICATION_COOKIE } from "@/lib/verification";
 
 export const metadata: Metadata = {
   title: "Verify your email",
 };
 
-type Status = "pending" | "verified" | "verified-login" | "expired" | "invalid";
+const REDIRECT_DELAY_MS = 2500;
 
-const CONTENT: Record<
-  Status,
-  { icon: LucideIcon; title: string; description: string; action?: { href: string; label: string } }
-> = {
-  // Shown after every signup attempt, including for addresses that already
-  // have an account (no email is sent then), so the copy must fit both cases.
-  pending: {
-    icon: MailCheck,
-    title: "Verify your email",
-    description:
-      "We've sent a verification link to the address you entered. Click it to activate your account.",
-  },
-  verified: {
-    icon: CircleCheck,
-    title: "Email verified",
-    description: "Your account is active. You're all set.",
-    action: { href: "/dashboard", label: "Continue to dashboard" },
-  },
-  "verified-login": {
-    icon: CircleCheck,
-    title: "Email verified",
-    description: "Your account is active. Log in to continue.",
-    action: { href: "/login", label: "Log in" },
-  },
-  expired: {
-    icon: MailX,
-    title: "Link expired",
-    description:
-      "This verification link has expired or was already used. If you've already verified, just log in. Otherwise, sign up again to get a new link.",
-    action: { href: "/login", label: "Log in" },
-  },
-  invalid: {
-    icon: MailX,
-    title: "Link not valid",
-    description:
-      "We couldn't verify this link. Try opening it again from the email, or sign up again to get a new one.",
-    action: { href: "/signup", label: "Back to sign up" },
-  },
-};
+const backToLogin = (
+  <TextLink href="/login" variant="subtle">
+    <ArrowLeft className="size-4" aria-hidden="true" />
+    Back to log in
+  </TextLink>
+);
 
-function toStatus(value: unknown): Status {
-  return typeof value === "string" && Object.hasOwn(CONTENT, value) ? (value as Status) : "pending";
-}
-
+/**
+ * State A (no status): just signed up, or a login was blocked because the
+ * email isn't confirmed. State B (?status=...): the result of opening the
+ * email link, set by /auth/confirm after it exchanged the token server-side.
+ */
 export default async function VerifyEmailPage({ searchParams }: PageProps<"/verify-email">) {
   const params = await searchParams;
 
@@ -69,34 +40,82 @@ export default async function VerifyEmailPage({ searchParams }: PageProps<"/veri
     redirect(`/auth/confirm?${query}`);
   }
 
-  const status = toStatus(params.status);
-  const { icon, title, description, action } = CONTENT[status];
+  const status = typeof params.status === "string" ? params.status : "pending";
 
+  if (status === "verified" || status === "verified-login") {
+    // "verified-login": confirmed, but the link was opened in another browser
+    // so there's no session here; the dashboard sends them through login.
+    const href = status === "verified" ? "/dashboard" : "/login?next=/dashboard";
+    return (
+      <AuthCard
+        icon={CircleCheck}
+        title="Email verified!"
+        description={
+          status === "verified"
+            ? "Your account is active. Taking you to your dashboard…"
+            : "Your account is active. Taking you to log in…"
+        }
+      >
+        <RedirectAfter href={href} delayMs={REDIRECT_DELAY_MS} />
+        <ButtonLink href={href} size="lg" className="w-full">
+          {status === "verified" ? "Continue to dashboard" : "Log in"}
+        </ButtonLink>
+      </AuthCard>
+    );
+  }
+
+  const user = await getCurrentUser();
+  if (user?.emailVerified) redirect("/dashboard");
+  const pendingEmail =
+    (user?.email ?? null) || ((await cookies()).get(PENDING_VERIFICATION_COOKIE)?.value ?? null);
+
+  if (status === "expired" || status === "invalid") {
+    return (
+      <AuthCard
+        icon={MailX}
+        title={status === "expired" ? "Link expired" : "Link not valid"}
+        description={
+          status === "expired"
+            ? "This verification link has expired or was already used. Already verified? Just log in. Otherwise, request a new link below."
+            : "We couldn't verify this link. Request a new one below, or log in if you've already verified."
+        }
+        footer={backToLogin}
+      >
+        {pendingEmail ? (
+          <p className="text-center text-body-sm text-muted-foreground">
+            We&apos;ll send a new link to{" "}
+            <span className="font-semibold break-words text-foreground">{pendingEmail}</span>.
+          </p>
+        ) : null}
+        <ResendVerificationForm askForEmail={!pendingEmail} />
+      </AuthCard>
+    );
+  }
+
+  // Shown after every signup attempt, including for addresses that already
+  // have an account (no email is sent then), so the copy must fit both cases.
   return (
     <AuthCard
-      icon={icon}
-      title={title}
-      description={description}
-      footer={
-        status === "pending" || status === "invalid" ? (
-          <TextLink href="/login" variant="subtle">
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            Back to log in
-          </TextLink>
-        ) : undefined
+      icon={MailCheck}
+      title="Verify your email"
+      description={
+        pendingEmail ? (
+          <>
+            We&apos;ve sent a verification link to{" "}
+            <span className="font-semibold break-words text-foreground">{pendingEmail}</span>. Click it
+            to activate your account.
+          </>
+        ) : (
+          "We've sent a verification link to your email. Click it to activate your account."
+        )
       }
+      footer={backToLogin}
     >
-      {action ? (
-        <Link href={action.href} className={cn(buttonVariants({ size: "lg" }), "w-full")}>
-          {action.label}
-        </Link>
-      ) : null}
-      {status === "pending" ? (
-        <p className="text-center text-body-sm text-muted-foreground">
-          Don&apos;t see it? Check your spam folder. If you already have an account with this
-          email, <TextLink href="/login">log in</TextLink> instead.
-        </p>
-      ) : null}
+      <ResendVerificationForm askForEmail={!pendingEmail} />
+      <p className="text-center text-body-sm text-muted-foreground">
+        Don&apos;t see it? Check your spam folder. If you already have an account with this email,{" "}
+        <TextLink href="/login">log in</TextLink> instead.
+      </p>
     </AuthCard>
   );
 }

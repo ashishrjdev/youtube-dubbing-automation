@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -141,3 +142,40 @@ def test_valid_token_exposes_verified_user_id(fake_auth) -> None:
     assert response.status_code == 200
     assert response.json() == {"id": str(user_id), "email": "a@example.com"}
     assert fake.calls == [FAKE_JWT]
+
+
+VALID_PROJECT = {"source_type": "youtube_url", "source_ref": "https://youtu.be/dQw4w9WgXcQ"}
+
+
+def _user(email_confirmed_at):
+    return SimpleNamespace(
+        user=SimpleNamespace(
+            id=str(uuid4()), email="a@example.com", email_confirmed_at=email_confirmed_at
+        )
+    )
+
+
+def test_unverified_user_cannot_create_project(fake_auth) -> None:
+    fake = fake_auth(result=_user(None))
+    client = TestClient(create_app())
+    headers = {"Authorization": f"Bearer {FAKE_JWT}"}
+
+    response = client.post("/projects", json=VALID_PROJECT, headers=headers)
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Email not verified"}
+    # One Supabase lookup serves both the router-level auth and the verified check.
+    assert fake.calls == [FAKE_JWT]
+    # Unverified users are still authenticated for everything else.
+    assert client.get("/me", headers=headers).status_code == 200
+
+
+def test_verified_user_passes_email_check(fake_auth) -> None:
+    fake_auth(result=_user(datetime.now(UTC)))
+
+    response = TestClient(create_app()).post(
+        "/projects", json=VALID_PROJECT, headers={"Authorization": f"Bearer {FAKE_JWT}"}
+    )
+
+    # Past the gate; the handler itself is still a stub.
+    assert response.status_code == 501

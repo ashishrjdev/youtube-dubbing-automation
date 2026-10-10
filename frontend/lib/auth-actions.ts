@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -12,7 +12,12 @@ import {
   validateLogin,
   validateSignup,
 } from "@/lib/auth-validation";
+import { getCurrentUser } from "@/lib/current-user";
 import { createServerSupabaseClient } from "@/lib/supabase";
+import {
+  PENDING_VERIFICATION_COOKIE,
+  PENDING_VERIFICATION_MAX_AGE_SECONDS,
+} from "@/lib/verification";
 
 const GENERIC_ERROR = "Something went wrong, please try again.";
 const RATE_LIMITED = "Too many attempts. Please wait a few minutes and try again.";
@@ -32,11 +37,22 @@ function logAuthError(action: string, error: { code?: string; name: string; stat
   console.error(`${action} failed: code=${error.code || error.name} status=${error.status}`);
 }
 
+async function rememberPendingVerification(email: string) {
+  (await cookies()).set(PENDING_VERIFICATION_COOKIE, email, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: PENDING_VERIFICATION_MAX_AGE_SECONDS,
+  });
+}
+
 export async function signOut() {
   const supabase = await createServerSupabaseClient();
   // Global scope revokes the session server-side (the backend rejects the old
   // access token immediately) and clears the auth cookies.
   await supabase.auth.signOut({ scope: "global" });
+  (await cookies()).delete(PENDING_VERIFICATION_COOKIE);
   redirect("/login");
 }
 
@@ -89,6 +105,7 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
     return { formError: GENERIC_ERROR };
   }
 
+  await rememberPendingVerification(email);
   redirect("/verify-email");
 }
 
@@ -119,6 +136,7 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
       }
       // Only reachable with the correct password, so it reveals nothing new.
       if (error.code === "email_not_confirmed") {
+        await rememberPendingVerification(email);
         destination = "/verify-email";
       } else if (error.code === "over_request_rate_limit") {
         return { formError: RATE_LIMITED };
@@ -167,5 +185,59 @@ export async function requestPasswordReset(
     return { formError: GENERIC_ERROR };
   }
 
+  return { sent: true };
+}
+
+export type ResendVerificationState = {
+  fieldErrors?: FieldErrors<{ email: string }>;
+  formError?: string;
+  sent?: boolean;
+};
+
+// Same reasoning as signup: these only occur for addresses that do (or don't)
+// have an account, so reporting them would reveal which emails are registered.
+const RESEND_INDISTINGUISHABLE_FROM_SUCCESS = new Set([
+  "over_email_send_rate_limit",
+  "user_not_found",
+  "user_already_exists",
+  "email_exists",
+]);
+
+/** The address to resend to when the form doesn't ask for one. */
+async function knownPendingEmail(): Promise<string | null> {
+  const user = await getCurrentUser();
+  if (user?.email && !user.emailVerified) return user.email;
+  return (await cookies()).get(PENDING_VERIFICATION_COOKIE)?.value ?? null;
+}
+
+export async function resendVerificationEmail(
+  _prev: ResendVerificationState,
+  formData: FormData,
+): Promise<ResendVerificationState> {
+  const typed = String(formData.get("email") ?? "").trim();
+  const email = typed || (await knownPendingEmail());
+  if (!email) return { formError: "Enter the email address you signed up with." };
+  const emailError = validateEmail(email);
+  if (emailError) return { fieldErrors: { email: emailError } };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${await requestOrigin()}/auth/confirm` },
+    });
+    if (error && !RESEND_INDISTINGUISHABLE_FROM_SUCCESS.has(error.code ?? "")) {
+      logAuthError("resendVerificationEmail", error);
+      if (error.code === "email_address_invalid") return { fieldErrors: { email: INVALID_EMAIL } };
+      if (error.code === "over_request_rate_limit") return { formError: RATE_LIMITED };
+      return { formError: GENERIC_ERROR };
+    }
+  } catch {
+    console.error("resendVerificationEmail failed: unexpected exception");
+    return { formError: GENERIC_ERROR };
+  }
+
+  if (typed) await rememberPendingVerification(typed);
   return { sent: true };
 }

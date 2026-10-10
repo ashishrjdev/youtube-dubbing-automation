@@ -7,10 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
-  return (
-    <LegalPage
-      title="Terms of Service"
-      summary="The rules for using the service, your content, and our responsibilities."
-    />
-  );
+  return <LegalPage title="Terms of Service" />;
 }

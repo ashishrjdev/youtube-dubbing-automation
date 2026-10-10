@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { KeyRound, LogOut } from "lucide-react";
 
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { signOut } from "@/lib/auth-actions";
-import { getCurrentUserEmail } from "@/lib/current-user";
+import { getCurrentUser } from "@/lib/current-user";
 import { initialsFromEmail } from "@/lib/initials";
 import { cn } from "@/lib/utils";
 
@@ -44,12 +43,10 @@ function SettingsSection({
 }
 
 export default async function AccountPage() {
-  const email = await getCurrentUserEmail();
+  const email = (await getCurrentUser())?.email ?? null;
 
   return (
     <div className="grid gap-8">
-      <PageHeader title="Account" description="Manage your profile, security, and sessions." />
-
       <SettingsSection title="Profile" description="The email address you sign in with.">
         <div className="flex items-center gap-4">
           <span

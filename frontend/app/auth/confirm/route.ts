@@ -2,6 +2,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { createServerSupabaseClient } from "@/lib/supabase";
+import { PENDING_VERIFICATION_COOKIE } from "@/lib/verification";
 
 /**
  * Landing point for links in Supabase auth emails (signup confirmation).
@@ -17,7 +18,9 @@ export async function GET(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/verify-email";
     url.search = `?status=${status}`;
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    if (status.startsWith("verified")) response.cookies.delete(PENDING_VERIFICATION_COOKIE);
+    return response;
   };
 
   const errorCode = searchParams.get("error_code");
