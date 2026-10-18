@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 
+import { AuthSessionSync } from "@/components/auth/auth-session-sync";
 import { APP_NAME } from "@/lib/brand";
 
 import "./globals.css";
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <AuthSessionSync />
         {children}
       </body>
     </html>

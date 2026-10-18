@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { KeyRound, LogOut } from "lucide-react";
+import { KeyRound } from "lucide-react";
 
+import { LogoutEverywhereButton } from "@/components/account/logout-everywhere-button";
 import { ProfileForm } from "@/components/account/profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
-import { signOut } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/current-user";
 import { initialsFor } from "@/lib/initials";
 import { cn } from "@/lib/utils";
@@ -84,12 +84,7 @@ export default async function AccountPage() {
         title="Sessions"
         description="Sign out everywhere, including other browsers and devices."
       >
-        <form action={signOut}>
-          <Button type="submit" variant="outline" size="lg">
-            <LogOut className="size-4" aria-hidden="true" />
-            Log out of all devices
-          </Button>
-        </form>
+        <LogoutEverywhereButton />
       </SettingsSection>
 
       <SettingsSection
