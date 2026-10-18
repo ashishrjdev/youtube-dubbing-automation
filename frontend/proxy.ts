@@ -53,17 +53,25 @@ export async function proxy(request: NextRequest) {
 
   if (SELF_AUTHENTICATED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return response;
 
+  // Never let the browser reuse a logged-in HTML snapshot after logout (back button).
+  const noStore = () => {
+    response.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  };
+
   if (signedIn) {
     if (pathname === "/") return redirectTo("/dashboard");
     if (matches(pathname, SIGNED_OUT_ONLY)) {
       return redirectTo(safeRedirectPath(searchParams.get("next")));
     }
+    noStore();
     return response;
   }
 
   if (matches(pathname, PUBLIC_PATHS)) return response;
   if (pathname === "/") return redirectTo("/login");
-  return redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
+  const redirect = redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
+  redirect.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
+  return redirect;
 }
 
 export const config = {

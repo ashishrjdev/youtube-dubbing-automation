@@ -4,8 +4,8 @@ import { Menu } from "@base-ui/react/menu";
 import { LogOut, User } from "lucide-react";
 import Link from "next/link";
 
-import { signOut } from "@/lib/auth-actions";
 import { initialsFor } from "@/lib/initials";
+import { logout } from "@/lib/logout";
 
 const itemClass =
   "flex cursor-default items-center gap-2.5 rounded-lg px-3 py-2 text-body-sm text-foreground outline-none select-none data-[highlighted]:bg-surface-container-low";
@@ -57,7 +57,7 @@ export function UserMenu({ email, fullName }: { email: string | null; fullName: 
               Account
             </Menu.LinkItem>
             <Menu.Item
-              onClick={() => void signOut()}
+              onClick={() => logout("local")}
               className={`${itemClass} text-destructive data-[highlighted]:bg-error-container data-[highlighted]:text-on-error-container`}
             >
               <LogOut className="size-4" aria-hidden="true" />

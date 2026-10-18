@@ -53,13 +53,12 @@ async function rememberPendingVerification(email: string) {
   });
 }
 
+/**
+ * @deprecated Prefer `logout()` from `@/lib/logout`, which navigates to
+ * `/auth/logout`. Kept only so any lingering form actions still work.
+ */
 export async function signOut() {
-  const supabase = await createServerSupabaseClient();
-  // Global scope revokes the session server-side (the backend rejects the old
-  // access token immediately) and clears the auth cookies.
-  await supabase.auth.signOut({ scope: "global" });
-  (await cookies()).delete(PENDING_VERIFICATION_COOKIE);
-  redirect("/login");
+  redirect("/auth/logout");
 }
 
 export type SignUpState = {
