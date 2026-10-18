@@ -7,11 +7,13 @@ import { redirect } from "next/navigation";
 import {
   type FieldErrors,
   type LoginFieldErrors,
+  type ResetPasswordFieldErrors,
   type SignupFieldErrors,
   safeRedirectPath,
   validateEmail,
   validateFullName,
   validateLogin,
+  validateResetPassword,
   validateSignup,
 } from "@/lib/auth-validation";
 import { FULL_NAME_KEY, getCurrentUser } from "@/lib/current-user";
@@ -23,6 +25,7 @@ import {
 
 const GENERIC_ERROR = "Something went wrong, please try again.";
 const RATE_LIMITED = "Too many attempts, please try again later.";
+const RESET_RATE_LIMITED = "Please wait a minute before trying again.";
 const INVALID_CREDENTIALS = "Invalid email or password.";
 const INVALID_EMAIL = "Enter a valid email address, like name@example.com.";
 
@@ -210,16 +213,19 @@ export async function requestPasswordReset(
 
   try {
     const supabase = await createServerSupabaseClient();
-    // Supabase returns success for unknown emails too; we always show the same
-    // "check your email" screen. The per-user email rate limit only triggers
-    // for real accounts, so it's also reported as success.
+    // Supabase returns success for unknown emails too (verified). The per-user
+    // email rate limit only triggers for real accounts, so reporting it would
+    // reveal which emails are registered — treat it as success. IP-wide
+    // request limits are safe to surface.
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${await requestOrigin()}/reset-password`,
+      redirectTo: `${await requestOrigin()}/auth/confirm?flow=recovery`,
     });
     if (error && error.code !== "over_email_send_rate_limit") {
       logAuthError("requestPasswordReset", error);
       if (error.code === "email_address_invalid") return { fieldErrors: { email: INVALID_EMAIL } };
-      if (error.code === "over_request_rate_limit") return { formError: RATE_LIMITED };
+      if (error.code === "over_request_rate_limit" || error.status === 429) {
+        return { formError: RESET_RATE_LIMITED };
+      }
       return { formError: GENERIC_ERROR };
     }
   } catch {
@@ -228,6 +234,59 @@ export async function requestPasswordReset(
   }
 
   return { sent: true };
+}
+
+export type UpdatePasswordState = {
+  fieldErrors?: ResetPasswordFieldErrors;
+  formError?: string;
+  updated?: boolean;
+};
+
+export async function updatePassword(
+  _prev: UpdatePasswordState,
+  formData: FormData,
+): Promise<UpdatePasswordState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  const fieldErrors = validateResetPassword({ password, confirmPassword });
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { formError: "This reset link is invalid or has expired. Request a new one." };
+    }
+
+    // Never log password. updateUser only gets the new value.
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      logAuthError("updatePassword", error);
+      if (error.code === "weak_password") {
+        return { fieldErrors: { password: "Choose a stronger password." } };
+      }
+      if (error.code === "same_password") {
+        return { fieldErrors: { password: "Choose a password you haven't used before." } };
+      }
+      if (error.code === "over_request_rate_limit" || error.status === 429) {
+        return { formError: RATE_LIMITED };
+      }
+      return { formError: GENERIC_ERROR };
+    }
+
+    // Drop every other device/session. Supabase does not reliably revoke them
+    // on password change alone; scope "others" keeps this recovery session.
+    await supabase.auth.signOut({ scope: "others" });
+  } catch {
+    console.error("updatePassword failed: unexpected exception");
+    return { formError: GENERIC_ERROR };
+  }
+
+  revalidatePath("/", "layout");
+  return { updated: true };
 }
 
 export type ResendVerificationState = {

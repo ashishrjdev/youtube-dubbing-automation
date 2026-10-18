@@ -178,7 +178,8 @@ One-time dashboard steps (Supabase → **Authentication**):
 2. **Sign In / Providers → Email:** set **Minimum password length** to `8`.
 3. **URL Configuration:**
    - **Site URL:** `http://localhost:3000` for now. Change it to the production frontend URL at deploy time.
-   - **Redirect URLs:** add `http://localhost:3000/**`. Add the production equivalent (`https://your-domain/**`) at deploy time.
+   - **Redirect URLs:** add `http://localhost:3000/**`. Add the production equivalent (`https://your-domain/**`) at deploy time. That wildcard already covers `/auth/confirm`, `/reset-password`, and `/verify-email`.
+4. **Sessions / OTP expiry (Authentication → Settings → Email OTP Expiration):** set to **3600 seconds (1 hour)** so password-reset and verification links match the product rule. Confirmed in this project’s dashboard.
 
 Notes:
 
@@ -192,6 +193,7 @@ Notes:
 - **Route protection** lives in `proxy.ts` (Next.js 16's name for `middleware.ts`). Public pages: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/terms`, `/privacy`. `/auth/*` and `/api/*` handle auth themselves. Everything else needs a session, and signed-out visitors go to `/login?next=<path>`. Signed-in visitors to `/login` or `/signup` go to `next` (or `/dashboard`), and `/` goes to `/dashboard` or `/login`.
 - **`next` is only followed if it's a same-origin path** (`safeRedirectPath` in `lib/auth-validation.ts`). Absolute URLs, `//host`, `/\host`, and tab or newline tricks all fall back to `/dashboard`. The login page and the `signIn` action both check it.
 - **Signup never reveals whether an email is registered.** With "Confirm email" on, Supabase answers a duplicate signup with a fake success and sends no email. The `signUp` Server Action (`lib/auth-actions.ts`) also treats `user_already_exists`, `email_exists`, and `over_email_send_rate_limit` as success, and every path ends on `/verify-email`. Keep it that way: don't add an "email already exists" message.
+- **Password reset.** `/forgot-password` calls `resetPasswordForEmail` with `redirectTo=/auth/confirm?flow=recovery`. Supabase returns success for unknown emails too (verified), so the UI always shows "If an account exists for that email, we've sent a reset link" and never reveals whether the address is registered. The per-address email rate limit is also treated as success for the same reason; IP-wide limits show "Please wait a minute before trying again." The Send button has a 60-second cooldown. `/auth/confirm?flow=recovery` exchanges the PKCE `?code=` into httpOnly cookies and sends the user to `/reset-password`, which shows the new-password form only when a session exists. Invalid, expired, or already-used links show a clear error with "Request a new link". On success, `updateUser({ password })` runs, then `signOut({ scope: "others" })` drops every other device; this browser stays signed in and redirects to `/dashboard`.
 
 ## Auth and Sessions
 

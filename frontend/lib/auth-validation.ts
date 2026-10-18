@@ -22,6 +22,12 @@ export type LoginFields = {
 };
 export type LoginFieldErrors = FieldErrors<LoginFields>;
 
+export type ResetPasswordFields = {
+  password: string;
+  confirmPassword: string;
+};
+export type ResetPasswordFieldErrors = FieldErrors<ResetPasswordFields>;
+
 export function validateEmail(email: string): string | undefined {
   const value = email.trim();
   if (!value) return "Enter your email address.";
@@ -78,6 +84,13 @@ export function validateLogin(fields: LoginFields): LoginFieldErrors {
   return compact<LoginFields>({
     email: validateEmail(fields.email),
     password: fields.password ? undefined : "Enter your password.",
+  });
+}
+
+export function validateResetPassword(fields: ResetPasswordFields): ResetPasswordFieldErrors {
+  return compact<ResetPasswordFields>({
+    password: validatePassword(fields.password),
+    confirmPassword: validateConfirmPassword(fields.password, fields.confirmPassword),
   });
 }
 
