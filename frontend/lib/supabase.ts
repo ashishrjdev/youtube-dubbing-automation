@@ -6,6 +6,10 @@ import type { NextRequest, NextResponse } from "next/server";
 // can never read the access/refresh tokens. That means there is deliberately
 // no browser Supabase client: sign-in/sign-out run as Server Actions, and API
 // calls go through the /api/backend proxy, which attaches the token server-side.
+//
+// @supabase/ssr's createServerClient sets autoRefreshToken: false on purpose.
+// Silent refresh is done by proxy.ts (getUser on navigation) and by
+// backendFetch (one deduped refreshSession on a 401 from FastAPI).
 const cookieOptions: CookieOptionsWithName = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
