@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { KeyRound } from "lucide-react";
 
+import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { LogoutEverywhereButton } from "@/components/account/logout-everywhere-button";
 import { ProfileForm } from "@/components/account/profile-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonLink } from "@/components/ui/button-link";
+import { TextLink } from "@/components/text-link";
 import { getCurrentUser } from "@/lib/current-user";
 import { initialsFor } from "@/lib/initials";
 import { cn } from "@/lib/utils";
@@ -72,12 +72,15 @@ export default async function AccountPage() {
 
       <SettingsSection
         title="Password"
-        description="We'll email you a secure link to choose a new password."
+        description="Change your password. You'll stay signed in on this device; other sessions are signed out."
       >
-        <ButtonLink href="/forgot-password" variant="outline" size="lg">
-          <KeyRound className="size-4" aria-hidden="true" />
-          Reset password
-        </ButtonLink>
+        <div className="grid gap-4">
+          <ChangePasswordForm />
+          <p className="text-body-sm text-muted-foreground">
+            Forgot your current password?{" "}
+            <TextLink href="/forgot-password">Reset it by email</TextLink>
+          </p>
+        </div>
       </SettingsSection>
 
       <SettingsSection
