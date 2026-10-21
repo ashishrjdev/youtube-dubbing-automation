@@ -18,6 +18,7 @@ import {
   validateResetPassword,
   validateSignup,
 } from "@/lib/auth-validation";
+import { rateLimitMessage } from "@/lib/auth-rate-limit";
 import { FULL_NAME_KEY, getCurrentUser } from "@/lib/current-user";
 import { createEphemeralSupabaseClient, createServerSupabaseClient } from "@/lib/supabase";
 import {
@@ -26,8 +27,6 @@ import {
 } from "@/lib/verification";
 
 const GENERIC_ERROR = "Something went wrong, please try again.";
-const RATE_LIMITED = "Too many attempts, please try again later.";
-const RESET_RATE_LIMITED = "Please wait a minute before trying again.";
 const INVALID_CREDENTIALS = "Invalid email or password.";
 const INVALID_EMAIL = "Enter a valid email address, like name@example.com.";
 
@@ -108,7 +107,8 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
         return { fieldErrors: { password: "Choose a stronger password." } };
       }
       if (error.code === "email_address_invalid") return { fieldErrors: { email: INVALID_EMAIL } };
-      if (error.code === "over_request_rate_limit") return { formError: RATE_LIMITED };
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
   } catch {
@@ -150,9 +150,8 @@ export async function signIn(_prev: SignInState, formData: FormData): Promise<Si
         await rememberPendingVerification(email);
         return { unverified: true };
       }
-      if (error.code === "over_request_rate_limit" || error.status === 429) {
-        return { formError: RATE_LIMITED };
-      }
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
   } catch {
@@ -183,9 +182,8 @@ export async function updateProfile(
     const { error } = await supabase.auth.updateUser({ data: { [FULL_NAME_KEY]: fullName } });
     if (error) {
       logAuthError("updateProfile", error);
-      if (error.code === "over_request_rate_limit" || error.status === 429) {
-        return { formError: RATE_LIMITED };
-      }
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
   } catch {
@@ -224,9 +222,8 @@ export async function requestPasswordReset(
     if (error && error.code !== "over_email_send_rate_limit") {
       logAuthError("requestPasswordReset", error);
       if (error.code === "email_address_invalid") return { fieldErrors: { email: INVALID_EMAIL } };
-      if (error.code === "over_request_rate_limit" || error.status === 429) {
-        return { formError: RESET_RATE_LIMITED };
-      }
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
   } catch {
@@ -272,9 +269,8 @@ export async function updatePassword(
       if (error.code === "same_password") {
         return { fieldErrors: { password: "Choose a password you haven't used before." } };
       }
-      if (error.code === "over_request_rate_limit" || error.status === 429) {
-        return { formError: RATE_LIMITED };
-      }
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
 
@@ -357,9 +353,8 @@ export async function changePassword(
       ) {
         return { fieldErrors: { currentPassword: CURRENT_PASSWORD_INCORRECT } };
       }
-      if (verifyError.code === "over_request_rate_limit" || verifyError.status === 429) {
-        return { formError: RATE_LIMITED };
-      }
+      const verifyRateLimited = rateLimitMessage(verifyError);
+      if (verifyRateLimited) return { formError: verifyRateLimited };
       return { formError: PASSWORD_UNCHANGED };
     }
     // Drop the temporary session so verification does not leave a second login.
@@ -391,9 +386,8 @@ export async function changePassword(
       if (error.code === "weak_password") {
         return { fieldErrors: { password: "Choose a stronger password." } };
       }
-      if (error.code === "over_request_rate_limit" || error.status === 429) {
-        return { formError: RATE_LIMITED };
-      }
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: PASSWORD_UNCHANGED };
     }
 
@@ -450,7 +444,8 @@ export async function resendVerificationEmail(
     if (error && !RESEND_INDISTINGUISHABLE_FROM_SUCCESS.has(error.code ?? "")) {
       logAuthError("resendVerificationEmail", error);
       if (error.code === "email_address_invalid") return { fieldErrors: { email: INVALID_EMAIL } };
-      if (error.code === "over_request_rate_limit") return { formError: RATE_LIMITED };
+      const rateLimited = rateLimitMessage(error);
+      if (rateLimited) return { formError: rateLimited };
       return { formError: GENERIC_ERROR };
     }
   } catch {
