@@ -5,11 +5,13 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
+  type ChangePasswordFieldErrors,
   type FieldErrors,
   type LoginFieldErrors,
   type ResetPasswordFieldErrors,
   type SignupFieldErrors,
   safeRedirectPath,
+  validateChangePassword,
   validateEmail,
   validateFullName,
   validateLogin,
@@ -17,7 +19,7 @@ import {
   validateSignup,
 } from "@/lib/auth-validation";
 import { FULL_NAME_KEY, getCurrentUser } from "@/lib/current-user";
-import { createServerSupabaseClient } from "@/lib/supabase";
+import { createEphemeralSupabaseClient, createServerSupabaseClient } from "@/lib/supabase";
 import {
   PENDING_VERIFICATION_COOKIE,
   PENDING_VERIFICATION_MAX_AGE_SECONDS,
@@ -286,6 +288,124 @@ export async function updatePassword(
 
   revalidatePath("/", "layout");
   return { updated: true };
+}
+
+export type ChangePasswordState = {
+  fieldErrors?: ChangePasswordFieldErrors;
+  formError?: string;
+  /** Set on success so the form can clear fields and show a message. */
+  changed?: boolean;
+  changeId?: number;
+};
+
+const CURRENT_PASSWORD_INCORRECT = "Current password is incorrect.";
+const PASSWORD_UNCHANGED =
+  "Your password was not changed. Something went wrong, please try again.";
+
+/**
+ * Logged-in change-password.
+ *
+ * Preferred: Supabase `updateUser({ password, current_password })` with
+ * Authentication → Providers → Email → "Require current password when changing
+ * password" enabled (free plan). That setting is currently off on this project,
+ * so wrong `current_password` values are ignored by Auth — verified by probe.
+ *
+ * Fallback (enforced here): verify the current password with
+ * `signInWithPassword` on an ephemeral client that never touches cookies, then
+ * revoke that temporary session. This protects our Account form only; anyone
+ * calling Supabase directly with a stolen session can still change the password
+ * until the dashboard toggle is on. We still send `current_password` so enabling
+ * the toggle adds server-side enforcement without a code change.
+ *
+ * Passwords are never logged (SEC-01).
+ */
+export async function changePassword(
+  _prev: ChangePasswordState,
+  formData: FormData,
+): Promise<ChangePasswordState> {
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  const fieldErrors = validateChangePassword({
+    currentPassword,
+    password,
+    confirmPassword,
+  });
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) {
+      return { formError: PASSWORD_UNCHANGED };
+    }
+
+    // Fallback verification: separate client, no cookie/storage persistence.
+    const verifier = createEphemeralSupabaseClient();
+    const { error: verifyError } = await verifier.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (verifyError) {
+      logAuthError("changePassword.verify", verifyError);
+      if (
+        verifyError.code === "invalid_credentials" ||
+        verifyError.code === "user_not_found"
+      ) {
+        return { fieldErrors: { currentPassword: CURRENT_PASSWORD_INCORRECT } };
+      }
+      if (verifyError.code === "over_request_rate_limit" || verifyError.status === 429) {
+        return { formError: RATE_LIMITED };
+      }
+      return { formError: PASSWORD_UNCHANGED };
+    }
+    // Drop the temporary session so verification does not leave a second login.
+    await verifier.auth.signOut({ scope: "local" });
+
+    // Never log passwords. current_password is enforced by Supabase once the
+    // "Require current password when changing password" setting is on (README).
+    const { error } = await supabase.auth.updateUser({
+      password,
+      current_password: currentPassword,
+    });
+    if (error) {
+      logAuthError("changePassword", error);
+      if (
+        error.code === "current_password_invalid" ||
+        error.code === "invalid_credentials" ||
+        error.code === "reauthentication_not_valid" ||
+        error.code === "current_password_required"
+      ) {
+        return { fieldErrors: { currentPassword: CURRENT_PASSWORD_INCORRECT } };
+      }
+      if (error.code === "same_password") {
+        return {
+          fieldErrors: {
+            password: "New password must be different from your current password.",
+          },
+        };
+      }
+      if (error.code === "weak_password") {
+        return { fieldErrors: { password: "Choose a stronger password." } };
+      }
+      if (error.code === "over_request_rate_limit" || error.status === 429) {
+        return { formError: RATE_LIMITED };
+      }
+      return { formError: PASSWORD_UNCHANGED };
+    }
+
+    // Password change alone does not revoke other devices; keep this session.
+    await supabase.auth.signOut({ scope: "others" });
+  } catch {
+    console.error("changePassword failed: unexpected exception");
+    return { formError: PASSWORD_UNCHANGED };
+  }
+
+  revalidatePath("/", "layout");
+  return { changed: true, changeId: Date.now() };
 }
 
 export type ResendVerificationState = {

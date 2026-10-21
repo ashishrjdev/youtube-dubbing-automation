@@ -28,6 +28,13 @@ export type ResetPasswordFields = {
 };
 export type ResetPasswordFieldErrors = FieldErrors<ResetPasswordFields>;
 
+export type ChangePasswordFields = {
+  currentPassword: string;
+  password: string;
+  confirmPassword: string;
+};
+export type ChangePasswordFieldErrors = FieldErrors<ChangePasswordFields>;
+
 export function validateEmail(email: string): string | undefined {
   const value = email.trim();
   if (!value) return "Enter your email address.";
@@ -90,6 +97,19 @@ export function validateLogin(fields: LoginFields): LoginFieldErrors {
 export function validateResetPassword(fields: ResetPasswordFields): ResetPasswordFieldErrors {
   return compact<ResetPasswordFields>({
     password: validatePassword(fields.password),
+    confirmPassword: validateConfirmPassword(fields.password, fields.confirmPassword),
+  });
+}
+
+export function validateChangePassword(fields: ChangePasswordFields): ChangePasswordFieldErrors {
+  const passwordError =
+    validatePassword(fields.password) ??
+    (fields.currentPassword && fields.password === fields.currentPassword
+      ? "New password must be different from your current password."
+      : undefined);
+  return compact<ChangePasswordFields>({
+    currentPassword: fields.currentPassword ? undefined : "Enter your current password.",
+    password: passwordError,
     confirmPassword: validateConfirmPassword(fields.password, fields.confirmPassword),
   });
 }

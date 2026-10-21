@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptionsWithName } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 
@@ -32,6 +33,27 @@ function supabaseUrl(): string {
 
 function supabaseAnonKey(): string {
   return requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+/**
+ * In-memory Supabase client that never reads or writes cookies / localStorage.
+ * Used only to verify a password via signInWithPassword without touching the
+ * caller's real httpOnly session. Callers must signOut({ scope: "local" })
+ * after a successful sign-in so the temporary session is revoked.
+ */
+export function createEphemeralSupabaseClient() {
+  return createClient(supabaseUrl(), supabaseAnonKey(), {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storage: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    },
+  });
 }
 
 /** Server Component / Route Handler / Server Action Supabase client. */
