@@ -1,4 +1,4 @@
-import { SHELL_CONTAINER } from "@/components/app-shell/shell-container";
+import { SHELL_FULL_WIDTH } from "@/components/app-shell/shell-container";
 import { TextLink } from "@/components/text-link";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ export function AppFooter() {
     <footer className="border-t border-border/70">
       <div
         className={cn(
-          SHELL_CONTAINER,
+          SHELL_FULL_WIDTH,
           "flex flex-col-reverse items-center gap-1.5 py-3 text-label-sm font-normal text-muted-foreground sm:flex-row sm:justify-between",
         )}
       >
