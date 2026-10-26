@@ -16,10 +16,11 @@ import {
   validateFullName,
   validateLogin,
   validateResetPassword,
-  validateSignup,
 } from "@/lib/auth-validation";
 import { rateLimitMessage } from "@/lib/auth-rate-limit";
 import { FULL_NAME_KEY, getCurrentUser } from "@/lib/current-user";
+import { PRIVACY_VERSION, TERMS_VERSION } from "@/lib/legal";
+import { prepareSignUp, type SignupConsentFieldErrors } from "@/lib/signup-consent";
 import { createEphemeralSupabaseClient, createServerSupabaseClient } from "@/lib/supabase";
 import {
   PENDING_VERIFICATION_COOKIE,
@@ -63,7 +64,7 @@ export async function signOut() {
 }
 
 export type SignUpState = {
-  fieldErrors?: SignupFieldErrors;
+  fieldErrors?: SignupFieldErrors & SignupConsentFieldErrors;
   formError?: string;
 };
 
@@ -84,18 +85,26 @@ export async function signUp(_prev: SignUpState, formData: FormData): Promise<Si
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  const acceptedTerms = formData.get("acceptedTerms") === "on";
 
-  const fieldErrors = validateSignup({ fullName, email, password, confirmPassword });
-  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  // Consent gate: never call Supabase when the box is unchecked (LEGAL-05).
+  const prepared = prepareSignUp(
+    { fullName, email, password, confirmPassword, acceptedTerms },
+    TERMS_VERSION,
+    PRIVACY_VERSION,
+  );
+  if (!prepared.ok) return { fieldErrors: prepared.fieldErrors };
 
   try {
     const supabase = await createServerSupabaseClient();
+    // Never log metadata or passwords (SEC-01). Consent versions come from
+    // TERMS_VERSION / PRIVACY_VERSION (LEGAL-01/02), not from the client.
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${await requestOrigin()}/auth/confirm`,
-        data: { [FULL_NAME_KEY]: fullName },
+        data: prepared.metadata,
       },
     });
 
