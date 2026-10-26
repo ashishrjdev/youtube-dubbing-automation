@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { SHELL_CONTAINER, SHELL_HEADER_HEIGHT } from "@/components/app-shell/shell-container";
+import { SHELL_FULL_WIDTH, SHELL_HEADER_HEIGHT } from "@/components/app-shell/shell-container";
 import { SidebarContent } from "@/components/app-shell/sidebar-content";
 import { UserMenu } from "@/components/app-shell/user-menu";
 import { useOpenHowItWorks } from "@/components/how-it-works-dialog";
@@ -30,7 +30,7 @@ export function AppHeader({ email, fullName }: { email: string | null; fullName:
         "sticky top-0 z-40 shrink-0 border-b border-border/70 bg-card/85 backdrop-blur-md",
       )}
     >
-      <div className={cn(SHELL_CONTAINER, "flex h-full items-center gap-3")}>
+      <div className={cn(SHELL_FULL_WIDTH, "flex h-full items-center gap-3")}>
         <Dialog.Root open={drawerOpen} onOpenChange={setDrawerOpen}>
           {/* -ml-2.5 lines the glyph, not the 40px hit area, up with the content edge. */}
           <Dialog.Trigger className={cn(iconButton, "-ml-2.5 lg:hidden")} aria-label="Open menu">

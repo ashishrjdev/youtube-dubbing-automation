@@ -2,6 +2,7 @@ import { Check, Languages } from "lucide-react";
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
+import { LegalFooter } from "@/components/legal-footer";
 import { Waveform } from "@/components/waveform";
 
 const FEATURES = [
@@ -69,8 +70,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      <main className="flex flex-1 flex-col items-center bg-card px-5 pt-6 pb-10 sm:justify-center sm:px-8 sm:py-12 lg:px-12">
-        <div className="w-full max-w-[420px]">{children}</div>
+      <main className="flex flex-1 flex-col bg-card px-5 pt-6 pb-10 sm:px-8 sm:py-12 lg:px-12">
+        <div className="flex flex-1 flex-col items-center sm:justify-center">
+          <div className="w-full max-w-[420px]">{children}</div>
+        </div>
+        <LegalFooter />
       </main>
     </div>
   );
