@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { safeRedirectPath } from "@/lib/auth-validation";
 import { createProxySupabaseClient } from "@/lib/supabase";
 
-/** Pages anyone can open. Everything else needs a session. */
+/** Pages anyone can open without a session. */
 const PUBLIC_PATHS = [
   "/login",
   "/signup",
@@ -13,6 +13,12 @@ const PUBLIC_PATHS = [
   "/terms",
   "/privacy",
 ];
+/**
+ * App areas that require a session. Unknown paths (e.g. typos) are left alone
+ * so `app/not-found.tsx` can render a branded 404 for logged-out users too
+ * (LEGAL-04). Add new authenticated route prefixes here.
+ */
+const PROTECTED_PREFIXES = ["/dashboard", "/account", "/projects"];
 /**
  * Prefixes that handle auth themselves: /auth/confirm runs before a session
  * exists, and /api/backend answers 401 rather than redirecting to an HTML page.
@@ -69,6 +75,11 @@ export async function proxy(request: NextRequest) {
 
   if (matches(pathname, PUBLIC_PATHS)) return response;
   if (pathname === "/") return redirectTo("/login");
+
+  // Only known app areas require login. Everything else (including unknown
+  // URLs) proceeds so Next can serve the branded 404.
+  if (!matches(pathname, PROTECTED_PREFIXES)) return response;
+
   const redirect = redirectTo(`/login?next=${encodeURIComponent(pathname + search)}`);
   redirect.headers.set("Cache-Control", "private, no-store, max-age=0, must-revalidate");
   return redirect;

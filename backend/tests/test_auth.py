@@ -163,7 +163,10 @@ def test_unverified_user_cannot_create_project(fake_auth) -> None:
     response = client.post("/projects", json=VALID_PROJECT, headers=headers)
 
     assert response.status_code == 403
-    assert response.json() == {"detail": "Email not verified"}
+    body = response.json()
+    assert body["error"] == "forbidden"
+    assert body["message"] == "Email not verified"
+    assert body["request_id"]
     # One Supabase lookup serves both the router-level auth and the verified check.
     assert fake.calls == [FAKE_JWT]
     # Unverified users are still authenticated for everything else.

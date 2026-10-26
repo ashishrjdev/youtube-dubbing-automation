@@ -21,19 +21,20 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </Link>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-6">
+      {/* One shared padding block so Account (nav bottom) sits tight above the version card. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5">
         <SidebarNav onNavigate={onNavigate} />
-      </div>
 
-      <div className="shrink-0 p-4">
-        <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-linear-to-br from-surface-container-low to-surface-container px-3 py-2.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-primary shadow-card">
-            <Sparkles className="size-4" aria-hidden="true" />
-          </span>
-          <p className="min-w-0 flex-1 truncate text-label-md text-foreground">{APP_NAME}</p>
-          <span className="shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-label-sm text-on-primary-fixed">
-            v{APP_VERSION}
-          </span>
+        <div className="mt-2 shrink-0">
+          <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-linear-to-br from-surface-container-low to-surface-container px-3 py-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-primary shadow-card">
+              <Sparkles className="size-4" aria-hidden="true" />
+            </span>
+            <p className="min-w-0 flex-1 truncate text-label-md text-foreground">{APP_NAME}</p>
+            <span className="shrink-0 rounded-full bg-primary-fixed px-2 py-0.5 text-label-sm text-on-primary-fixed">
+              v{APP_VERSION}
+            </span>
+          </div>
         </div>
       </div>
     </div>

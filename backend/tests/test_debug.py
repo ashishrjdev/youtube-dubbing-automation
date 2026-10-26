@@ -60,3 +60,25 @@ def test_debug_routes_absent_outside_development(
     assert client.post("/debug/test-job").status_code == 404
     assert client.get("/debug/test-job/some-id").status_code == 404
     assert client.post("/debug/storage-test").status_code == 404
+    assert client.get("/debug/raise").status_code == 404
+
+
+def test_debug_raise_returns_standard_500_without_traceback(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(app_settings, "environment", "development")
+    client = TestClient(create_app(), raise_server_exceptions=False)
+
+    response = client.get("/debug/raise")
+
+    assert response.status_code == 500
+    body = response.json()
+    assert body["error"] == "internal_error"
+    assert body["request_id"]
+    assert set(body) == {"error", "request_id"}
+    assert "RuntimeError" not in response.text
+    assert "Intentional debug failure" not in response.text
+    assert "traceback" not in response.text.lower()
+    logs = capsys.readouterr().out
+    assert body["request_id"] in logs
+    assert "Intentional debug failure" in logs

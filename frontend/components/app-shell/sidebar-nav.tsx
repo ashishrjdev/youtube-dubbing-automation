@@ -1,10 +1,9 @@
 "use client";
 
-import { LayoutDashboard, LogOut, User, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, User, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { logout } from "@/lib/logout";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -14,7 +13,7 @@ type NavItem = {
   isActive: (pathname: string) => boolean;
 };
 
-const NAV_ITEMS: NavItem[] = [
+const WORKSPACE_ITEMS: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -22,13 +21,14 @@ const NAV_ITEMS: NavItem[] = [
     // Project pages live under the dashboard.
     isActive: (p) => p === "/dashboard" || p.startsWith("/projects/"),
   },
-  {
-    href: "/account",
-    label: "Account",
-    icon: User,
-    isActive: (p) => p.startsWith("/account"),
-  },
 ];
+
+const ACCOUNT_ITEM: NavItem = {
+  href: "/account",
+  label: "Account",
+  icon: User,
+  isActive: (p) => p.startsWith("/account"),
+};
 
 const navClass = (active: boolean) =>
   cn(
@@ -38,55 +38,60 @@ const navClass = (active: boolean) =>
       : "text-muted-foreground hover:bg-surface-container-low/70 hover:text-foreground",
   );
 
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
+  const { href, label, icon: Icon, isActive } = item;
+  const active = isActive(pathname);
+
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      className={navClass(active)}
+    >
+      {active ? (
+        <span
+          className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary"
+          aria-hidden="true"
+        />
+      ) : null}
+      <Icon
+        className={cn(
+          "size-5 transition-colors",
+          active ? "text-primary" : "text-outline group-hover:text-foreground",
+        )}
+        aria-hidden="true"
+      />
+      {label}
+    </Link>
+  );
+}
+
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Main" className="flex h-full flex-col gap-1">
-      <p className="px-3 pb-2 text-label-sm tracking-wider text-outline uppercase">Workspace</p>
-      {NAV_ITEMS.map(({ href, label, icon: Icon, isActive }) => {
-        const active = isActive(pathname);
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className={navClass(active)}
-          >
-            {active ? (
-              <span
-                className="absolute inset-y-2 left-0 w-[3px] rounded-full bg-primary"
-                aria-hidden="true"
-              />
-            ) : null}
-            <Icon
-              className={cn(
-                "size-5 transition-colors",
-                active ? "text-primary" : "text-outline group-hover:text-foreground",
-              )}
-              aria-hidden="true"
-            />
-            {label}
-          </Link>
-        );
-      })}
+    <nav aria-label="Main" className="flex h-full flex-col">
+      <div className="flex flex-col gap-1">
+        <p className="px-3 pb-2 text-label-sm tracking-wider text-outline uppercase">
+          Workspace
+        </p>
+        {WORKSPACE_ITEMS.map((item) => (
+          <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
+        ))}
+      </div>
 
-      <div className="mt-auto border-t border-border/70 pt-3">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            logout("local");
-          }}
-          className={cn(
-            navClass(false),
-            "text-muted-foreground hover:bg-error-container/60 hover:text-destructive",
-          )}
-        >
-          <LogOut className="size-5 text-outline group-hover:text-destructive" aria-hidden="true" />
-          Logout
-        </button>
+      {/* Sits just above the version card in SidebarContent — no huge mt-auto gap. */}
+      <div className="mt-auto flex flex-col gap-1 border-t border-border/70 pt-3">
+        <NavLink item={ACCOUNT_ITEM} pathname={pathname} onNavigate={onNavigate} />
       </div>
     </nav>
   );
