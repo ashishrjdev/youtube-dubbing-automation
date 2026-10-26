@@ -49,7 +49,8 @@ def assert_validation_error(response, *locs: list) -> None:
     assert response.status_code == 422, response.text
     body = response.json()
     assert body["error"] == "validation_error"
-    assert set(body) == {"error", "details"}
+    assert set(body) == {"error", "details", "request_id"}
+    assert body["request_id"]
     for detail in body["details"]:
         assert set(detail) == {"loc", "msg", "type"}
     assert [d["loc"] for d in body["details"]] == list(locs)

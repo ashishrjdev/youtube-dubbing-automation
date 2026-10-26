@@ -90,12 +90,13 @@ Every screen uses the "Fluent Logic" design system from the Stitch mockups. Reus
 - **Links:** links are always blue so they read as clickable. Use `TextLink` (`variant="primary"` for calls to action, `variant="subtle"` for secondary links like "Back to log in"); never style a link with a grey or black text color.
 - **Forms:** `FormField` (label, hint, and an announced error message), `FormAlert` (form-level error), and the `useFormFields` hook (`hooks/use-form-fields.ts`), which shows inline errors after blur or submit and focuses the first invalid field.
 - **Auth / centered screens:** `AuthCard` (optional icon badge, title, description, footer) inside the `(auth)` layout: a 50/50 split screen on desktop (gradient brand panel left, plain white form area right; no card around the form) and a single white column on mobile. Use `PasswordStrengthMeter` for new-password fields.
+- **404 / error pages (LEGAL-04):** `app/not-found.tsx`, `app/error.tsx`, and `app/global-error.tsx` use `StatusPage` — a centered card with one `h1`, one short sentence, and one primary action. Error pages show a digest `Reference:` line and contact `LEGAL_CONFIG.CONTACT_EMAIL`; they never render `error.message` or a stack. `global-error.tsx` ships its own `<html>`/`<body>` with plain inline styles so it still works when the root layout fails.
 - **App screens:** the `(app)` layout (`components/app-shell/`) provides:
   - a sidebar with the logo, the Workspace nav, and the app version (`APP_VERSION` in `lib/brand.ts`) at the bottom (a drawer on mobile);
   - `AppHeader`, a sticky top bar with the page title, description and back link, a help icon (tooltip "How it works") and the avatar user menu (email, Account, Log out), plus the menu button below `lg`;
   - `AppFooter`, with the copyright and the Terms / Privacy links.
 
-  Page titles live in the header, not the page: add each new route to `pageHeading()` in `lib/page-headings.ts` (title, optional description and back link), and don't render another `<h1>` in the page. Use `EmptyState` for empty lists. Show one primary action per screen: "New project" appears on the page where it's the main next step (the empty dashboard now), not in the shell.
+  Page titles live in the header, not the page: add each new route to `pageHeading()` in `lib/page-headings.ts` (title, optional description and back link), and don't render another `<h1>` in the page. Use `EmptyState` for empty lists. Show one primary action per screen: "New project" appears on the page where it's the main next step (the empty dashboard now), not in the shell. For a record that does not exist **or** does not belong to the user (for example `/projects/[id]`), call `notFound()` so both cases show the same branded 404 and the UI never reveals whether someone else's project exists.
 - **"How it works" modal:** `HowItWorksProvider` (in the `(app)` layout) renders the step slider (`HowItWorks`, steps in `components/workflow-steps.tsx`) in a modal. It opens automatically once per account: `markHowItWorksSeen` stores `how_it_works_seen` in Supabase `user_metadata`, read back fresh through `getCurrentUser()` (`supabase.auth.getUser()`). Reopen it anywhere with `useOpenHowItWorks()` or `HowItWorksButton`; the header's help icon opens it.
 - **Mobile:** design mobile-first; grids collapse to one column below `sm`/`md`, and the sidebar is replaced by a top bar with a menu button below `lg`.
 
@@ -117,7 +118,12 @@ curl -X POST "http://localhost:8000/debug/test-job"
 
 # Check a job's status, result, and error
 curl http://localhost:8000/debug/test-job/<job_id>
+
+# Trigger the global 500 handler (LEGAL-04) — body is {"error":"internal_error","request_id":"..."} only
+curl -i http://localhost:8000/debug/raise
 ```
+
+On the frontend, `/debug-error` throws during render (to exercise `app/error.tsx`) and `/debug-error?mode=api` probes the friendly 5xx message. Both return the branded 404 when `NODE_ENV=production`.
 
 These routes are not registered at all in staging or production. Watch the worker with `docker compose logs -f worker`.
 
@@ -218,7 +224,7 @@ Notes:
 - **When does the banner show?** With **Confirm email** on, an unverified user can't log in at all: Supabase answers the correct password with `email_not_confirmed`, and the login form shows "Please verify your email first" with a resend button. A wrong password returns `invalid_credentials`, exactly like an unknown email, so this message never reveals which addresses are registered. The banner mainly covers sessions that exist while the email is unconfirmed. To see it locally, sign up without clicking the link, turn **Confirm email** off, log in, then turn it back on.
 - **Full name** is stored in Supabase `user_metadata.full_name`. It's set at signup through `signUp({ options: { data } })` and edited on the Account page by the `updateProfile` Server Action (`updateUser({ data })`). It's read with `getUser()` in `getCurrentUser()`, and the avatar initials come from it (falling back to the email). Users can change their own metadata, so never use it for authorization.
 - **Login errors.** "Invalid email or password." for any `invalid_credentials`. "Too many attempts, please try again in a few minutes." for rate limits (shared helper, see Rate limits above). "Something went wrong, please try again." for anything else, including network failures.
-- **Route protection** lives in `proxy.ts` (Next.js 16's name for `middleware.ts`). Public pages: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/terms`, `/privacy`. `/auth/*` and `/api/*` handle auth themselves. Everything else needs a session, and signed-out visitors go to `/login?next=<path>`. Signed-in visitors to `/login` or `/signup` go to `next` (or `/dashboard`), and `/` goes to `/dashboard` or `/login`.
+- **Route protection** lives in `proxy.ts` (Next.js 16's name for `middleware.ts`). Public pages: `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/terms`, `/privacy`. `/auth/*` and `/api/*` handle auth themselves. Protected prefixes (session required): `/dashboard`, `/account`, `/projects` — signed-out visitors go to `/login?next=<path>`. Unknown paths are **not** forced to login so `app/not-found.tsx` can show a branded 404 to everyone (LEGAL-04); add new authenticated areas to `PROTECTED_PREFIXES`. Signed-in visitors to `/login` or `/signup` go to `next` (or `/dashboard`), and `/` goes to `/dashboard` or `/login`.
 - **`next` is only followed if it's a same-origin path** (`safeRedirectPath` in `lib/auth-validation.ts`). Absolute URLs, `//host`, `/\host`, and tab or newline tricks all fall back to `/dashboard`. The login page and the `signIn` action both check it.
 - **Signup never reveals whether an email is registered.** With "Confirm email" on, Supabase answers a duplicate signup with a fake success and sends no email. The `signUp` Server Action (`lib/auth-actions.ts`) also treats `user_already_exists`, `email_exists`, and `over_email_send_rate_limit` as success, and every path ends on `/verify-email`. Keep it that way: don't add an "email already exists" message.
 - **Signup consent (LEGAL-05).** `/signup` requires an unchecked-by-default "I agree to the Terms of Service and Privacy Policy" checkbox (links open `/terms` and `/privacy` in a new tab). On success, `signUp` stores `terms_version`, `privacy_version` (from `TERMS_VERSION` / `PRIVACY_VERSION`), and `consent_accepted_at` in `user_metadata` alongside `full_name`. See **Consent records** below.
@@ -264,11 +270,11 @@ Supabase Auth issues and signs the access and refresh tokens. This project signs
 
 Every request body is a Pydantic model that extends `RequestModel` (`app/core/validation.py`), and every path or query param is typed. Don't parse `await request.json()` or accept a raw `dict`.
 
-- **Error shape.** All validation failures (wrong type, missing field, bad JSON, bad path param) return `422` with:
+- **Error shape.** API errors use a standard JSON envelope with a `request_id` (also echoed as `X-Request-ID`). Validation failures (wrong type, missing field, bad JSON, bad path param) return `422` with:
   ```json
-  {"error": "validation_error", "details": [{"loc": ["body", "original_text"], "msg": "...", "type": "string_too_short"}]}
+  {"error": "validation_error", "request_id": "...", "details": [{"loc": ["body", "original_text"], "msg": "...", "type": "string_too_short"}]}
   ```
-  Submitted values are never echoed back.
+  Submitted values are never echoed back. `HTTPException` and unknown routes use the same envelope (`error` + `request_id`, plus a safe 4xx `message` when the detail is intentional client copy). Unhandled exceptions return `500` `{"error":"internal_error","request_id":"..."}` with **no** traceback, exception message, or file paths in the body in any environment; the full traceback is logged server-side with that `request_id`. FastAPI `debug` is always off and `/docs` stays disabled in production (INFRA-02). On the frontend, `messageForBackendFailure()` / `useApiFetch()` show "Something went wrong, please try again" for 5xx and never print the response body.
 - **Unknown fields are rejected** (`extra="forbid"`), so a client can't sneak in something like `user_id`.
 - **Text fields** use the shared types, which strip whitespace and then enforce length. A whitespace-only value fails as empty.
   - `Name`: 1–100 chars. Used for character names.

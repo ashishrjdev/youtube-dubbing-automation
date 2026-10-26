@@ -38,6 +38,12 @@ class JobStatusResponse(BaseModel):
     ended_at: datetime | None
 
 
+@router.get("/raise")
+def raise_unhandled_error() -> None:
+    """Development-only: trigger the global 500 handler (LEGAL-04)."""
+    raise RuntimeError("Intentional debug failure (LEGAL-04)")
+
+
 @router.post("/test-job", response_model=TestJobsResponse)
 def enqueue_test_jobs(
     queue: Annotated[Queue, Depends(get_queue)],
