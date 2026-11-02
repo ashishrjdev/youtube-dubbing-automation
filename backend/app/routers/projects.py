@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, model_validator
 from rq import Queue
 from sqlalchemy.orm import Session
+from supabase_auth.types import User
 
 from app.core.auth import CurrentUser, VerifiedUser
 from app.core.database import get_db
@@ -69,8 +70,8 @@ def _youtube_http_error(exc: YoutubeServiceError) -> HTTPException:
     )
 
 
-def _user_uuid(user: object) -> UUID:
-    return UUID(str(getattr(user, "id")))
+def _user_uuid(user: User) -> UUID:
+    return UUID(str(user.id))
 
 
 @router.get("", response_model=list[ProjectResponse])
