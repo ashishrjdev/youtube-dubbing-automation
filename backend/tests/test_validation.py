@@ -7,21 +7,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.auth import get_current_user
+from app.core.database import get_db
+from app.core.queue import get_queue
 from app.core.validation import MAX_SCRIPT_TEXT_LENGTH
 from app.main import create_app
-
-VALID_YOUTUBE_URLS = [
-    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "https://youtube.com/watch?feature=share&v=dQw4w9WgXcQ&t=42",
-    "http://m.youtube.com/watch?v=dQw4w9WgXcQ",
-    "https://music.youtube.com/watch?v=dQw4w9WgXcQ&list=RDAMVM",
-    "youtube.com/watch?v=dQw4w9WgXcQ",
-    "https://youtu.be/dQw4w9WgXcQ",
-    "https://youtu.be/dQw4w9WgXcQ?si=abc123",
-    "https://www.youtube.com/shorts/dQw4w9WgXcQ",
-    "https://www.youtube.com/live/dQw4w9WgXcQ?feature=share",
-    "https://www.youtube.com/embed/dQw4w9WgXcQ",
-]
 
 INVALID_YOUTUBE_URLS = [
     "not a url",
@@ -33,6 +22,9 @@ INVALID_YOUTUBE_URLS = [
     "--exec=rm -rf / https://youtu.be/dQw4w9WgXcQ",
     "https://youtu.be/dQw4w9WgXcQ extra",
     "file:///etc/passwd",
+    "https://music.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://www.youtube.com/live/dQw4w9WgXcQ",
+    "youtube.com/watch?v=dQw4w9WgXcQ",
 ]
 
 
@@ -42,6 +34,9 @@ def client() -> TestClient:
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
         id=str(uuid4()), email="a@example.com", email_confirmed_at=datetime.now(UTC)
     )
+    # POST /projects now depends on DB/queue; stub them so validation-only tests stay offline.
+    app.dependency_overrides[get_db] = lambda: None
+    app.dependency_overrides[get_queue] = lambda: None
     return TestClient(app)
 
 
@@ -139,16 +134,12 @@ def test_malformed_youtube_url_rejected(client: TestClient, url: str) -> None:
         "/projects", json={"source_type": "youtube_url", "source_ref": url}
     )
 
-    assert_validation_error(response, ["body"])
-
-
-@pytest.mark.parametrize("url", VALID_YOUTUBE_URLS)
-def test_valid_youtube_url_passes_validation(client: TestClient, url: str) -> None:
-    response = client.post(
-        "/projects", json={"source_type": "youtube_url", "source_ref": url}
-    )
-
-    assert response.status_code == 501
+    # PROJ-01: domain error code from parse_youtube_url (not Pydantic validation_error).
+    assert response.status_code == 422, response.text
+    body = response.json()
+    assert body["error"] == "invalid_url"
+    assert body["message"]
+    assert body["request_id"]
 
 
 def test_youtube_url_check_applies_on_update(client: TestClient) -> None:

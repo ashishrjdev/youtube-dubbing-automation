@@ -88,7 +88,10 @@ def require_verified_email(user: CurrentUser) -> User:
     if user.email_confirmed_at is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified",
+            detail={
+                "error": "email_not_verified",
+                "message": "Email not verified",
+            },
         )
     return user
 

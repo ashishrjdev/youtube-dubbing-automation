@@ -17,11 +17,13 @@ export function pageHeading(pathname: string): PageHeading | null {
   if (pathname === "/projects/new") {
     return {
       title: "New project",
-      description: "Choose where your source audio comes from.",
+      description: "Start from a YouTube link. Upload comes next.",
       back: BACK_TO_PROJECTS,
     };
   }
-  if (pathname.startsWith("/projects/")) return { title: "Project", back: BACK_TO_PROJECTS };
+  if (pathname.startsWith("/projects/")) {
+    return { title: "Project", description: "Workspace for this dub.", back: BACK_TO_PROJECTS };
+  }
   if (pathname === "/account") {
     return { title: "Account", description: "Manage your profile, security, and sessions." };
   }

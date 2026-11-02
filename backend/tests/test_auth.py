@@ -157,14 +157,20 @@ def _user(email_confirmed_at):
 
 def test_unverified_user_cannot_create_project(fake_auth) -> None:
     fake = fake_auth(result=_user(None))
-    client = TestClient(create_app())
+    from app.core.database import get_db
+    from app.core.queue import get_queue
+
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: None
+    app.dependency_overrides[get_queue] = lambda: None
+    client = TestClient(app)
     headers = {"Authorization": f"Bearer {FAKE_JWT}"}
 
     response = client.post("/projects", json=VALID_PROJECT, headers=headers)
 
     assert response.status_code == 403
     body = response.json()
-    assert body["error"] == "forbidden"
+    assert body["error"] == "email_not_verified"
     assert body["message"] == "Email not verified"
     assert body["request_id"]
     # One Supabase lookup serves both the router-level auth and the verified check.
@@ -173,12 +179,27 @@ def test_unverified_user_cannot_create_project(fake_auth) -> None:
     assert client.get("/me", headers=headers).status_code == 200
 
 
-def test_verified_user_passes_email_check(fake_auth) -> None:
+def test_verified_user_passes_email_check(fake_auth, monkeypatch: pytest.MonkeyPatch) -> None:
     fake_auth(result=_user(datetime.now(UTC)))
+    # Avoid hitting yt-dlp / DB — this test only covers the verified-email gate.
+    from app.core.database import get_db
+    from app.core.queue import get_queue
+    from app.services.youtube import YoutubeServiceError
 
-    response = TestClient(create_app()).post(
+    monkeypatch.setattr(
+        "app.routers.projects.parse_youtube_url",
+        lambda raw: (_ for _ in ()).throw(
+            YoutubeServiceError("invalid_url", "That doesn't look like a YouTube video link.")
+        ),
+    )
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: None
+    app.dependency_overrides[get_queue] = lambda: None
+
+    response = TestClient(app).post(
         "/projects", json=VALID_PROJECT, headers={"Authorization": f"Bearer {FAKE_JWT}"}
     )
 
-    # Past the gate; the handler itself is still a stub.
-    assert response.status_code == 501
+    # Past the verified-email gate; URL parse then returns our domain error.
+    assert response.status_code == 422
+    assert response.json()["error"] == "invalid_url"

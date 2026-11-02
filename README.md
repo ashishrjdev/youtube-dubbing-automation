@@ -280,8 +280,8 @@ Every request body is a Pydantic model that extends `RequestModel` (`app/core/va
   - `Name`: 1–100 chars. Used for character names.
   - `ScriptText`: 1–5,000 chars. Used for script line text.
   - `DraftScriptText`: 0–5,000 chars. Used for `rewritten_text` on create, before the rewrite has run.
-  - `SourceRef`: 1–1,024 chars.
-- **YouTube URLs** must match `YOUTUBE_URL_RE` (`youtube.com/watch?v=`, `youtu.be/`, `/shorts/`, `/live/`, `/embed/`, with an 11-character video ID) before anything reaches `yt-dlp`. The match is anchored, so values like `--exec ...` or `youtube.com.evil.com` are rejected.
+  - `SourceRef`: 1–2,048 chars.
+- **YouTube URLs (PROJ-01).** `parse_youtube_url()` in `app/services/youtube.py` accepts only `http`/`https` hosts `youtube.com` / `www.youtube.com` / `m.youtube.com` / `youtu.be`, shapes `/watch?v=ID`, `youtu.be/ID`, `/shorts/ID`, `/embed/ID`, and an 11-character ID. Credentials, custom ports, lookalike hosts, and playlist-only URLs are rejected. **Never pass the user's raw string to yt-dlp** — only the canonical `https://www.youtube.com/watch?v=<id>` built from the validated ID. Availability uses yt-dlp with `download=False`; videos longer than `MAX_VIDEO_MINUTES` (default 60) are rejected. YouTube changes break yt-dlp regularly, so bumping the pinned `yt-dlp` version in `requirements.txt` is routine maintenance.
 - **Numbers:** `speed` must be between 0.7 and 1.2 (the ElevenLabs range). `order_index` must be finite, not NaN or infinity.
 - **SQL:** use the SQLAlchemy ORM or bound parameters only. Never build SQL with f-strings or `%` formatting from user input.
 - **Frontend:** render user text as normal JSX children, which React escapes. Never pass user-supplied text to `dangerouslySetInnerHTML`.
@@ -292,7 +292,7 @@ Every request body is a Pydantic model that extends `RequestModel` (`app/core/va
 
 | Service | Where secrets live | Variables |
 | --- | --- | --- |
-| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`. API service only: `FORWARDED_ALLOW_IPS` |
+| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `MAX_VIDEO_MINUTES`. API service only: `FORWARDED_ALLOW_IPS` |
 | Frontend | Vercel project environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `API_URL` (server-only backend URL, must be `https://`) |
 
 - Anything prefixed `NEXT_PUBLIC_` is bundled into browser JavaScript and is public. Only the Supabase URL, the anon key, and the API URL may ever go there. The service key and all provider API keys stay on the backend.
