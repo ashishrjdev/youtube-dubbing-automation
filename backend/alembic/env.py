@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
+from app.core.database import sqlalchemy_database_url
 from app.models import Base
 
 config = context.config
@@ -16,21 +17,20 @@ if not settings.database_url:
         "DATABASE_URL is not set. Copy .env.example to .env and set the Supabase Postgres URI."
     )
 
-database_url = settings.database_url.strip()
-if database_url.startswith(("http://", "https://")):
+raw_url = settings.database_url.strip()
+if raw_url.startswith(("http://", "https://")):
     raise RuntimeError(
         "DATABASE_URL looks like an HTTP(S) API URL. Use the Postgres connection string from "
         "Supabase → Project Settings → Database → Connection string → URI "
         "(must start with postgresql://)."
     )
-if not database_url.startswith(("postgresql://", "postgres://")):
+if not raw_url.startswith(("postgresql://", "postgres://", "postgresql+psycopg2://")):
     raise RuntimeError(
         "DATABASE_URL must be a Postgres URI starting with postgresql:// "
         "(Supabase → Project Settings → Database → Connection string → URI)."
     )
-# SQLAlchemy / psycopg2 expect postgresql://
-if database_url.startswith("postgres://"):
-    database_url = "postgresql://" + database_url.removeprefix("postgres://")
+# Pin psycopg2 — SQLAlchemy 2.1+ maps bare postgresql:// to psycopg3.
+database_url = sqlalchemy_database_url(raw_url)
 
 # Always take the URL from app settings (Supabase via .env), never a hardcoded string.
 config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))

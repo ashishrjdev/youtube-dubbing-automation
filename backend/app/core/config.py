@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     deepgram_api_key: str = ""
     openai_api_key: str = ""
     elevenlabs_api_key: str = ""
+    # Cap video length before transcription / TTS spend (PROJ-01).
+    max_video_minutes: int = 60
 
     @field_validator("environment", mode="before")
     @classmethod
