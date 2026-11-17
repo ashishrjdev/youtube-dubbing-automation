@@ -1,31 +1,11 @@
 import type { Metadata } from "next";
-import { Clapperboard, Plus } from "lucide-react";
 
-import { EmptyState } from "@/components/empty-state";
-import { HowItWorksButton } from "@/components/how-it-works-dialog";
-import { ButtonLink } from "@/components/ui/button-link";
+import { ProjectDashboard } from "@/components/projects/project-dashboard";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
 export default function DashboardPage() {
-  return (
-    <div className="grid gap-8">
-      <EmptyState
-        icon={Clapperboard}
-        title="No projects yet"
-        description="Start with a YouTube link or an audio file. We'll transcribe it, help you polish the script, and generate the dubbed voice track."
-        action={
-          <div className="flex flex-col justify-center gap-3 sm:flex-row">
-            <ButtonLink href="/projects/new" size="lg">
-              <Plus className="size-4" aria-hidden="true" />
-              New project
-            </ButtonLink>
-            <HowItWorksButton />
-          </div>
-        }
-      />
-    </div>
-  );
+  return <ProjectDashboard />;
 }

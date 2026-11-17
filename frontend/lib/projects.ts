@@ -1,3 +1,4 @@
+/** Full project from create/get (includes source_ref for the workspace). */
 export type Project = {
   id: string;
   user_id: string;
@@ -9,6 +10,23 @@ export type Project = {
   status: string;
   created_at: string;
   updated_at: string;
+};
+
+/** Dashboard list item — never includes user_id or source_ref (PROJ-03). */
+export type ProjectListItem = {
+  id: string;
+  title: string | null;
+  source_type: string;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProjectListResponse = {
+  items: ProjectListItem[];
+  total: number;
 };
 
 export function formatDuration(totalSeconds: number | null | undefined): string {

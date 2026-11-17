@@ -83,14 +83,16 @@ export function AuthSessionSync() {
     // and BroadcastChannel wasn't delivered.
     const ensureStillSignedIn = () => {
       if (!isProtected(pathname)) return;
-      void fetch("/api/backend/me", { cache: "no-store", credentials: "same-origin" }).then(
-        (response) => {
+      // Network / backend-down failures must not reject as unhandled — only a
+      // confirmed 401 means the session is gone.
+      void fetch("/api/backend/me", { cache: "no-store", credentials: "same-origin" })
+        .then((response) => {
           if (response.status === 401) {
             router.replace("/login");
             window.location.replace("/login");
           }
-        },
-      );
+        })
+        .catch(() => undefined);
     };
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) ensureStillSignedIn();

@@ -1,5 +1,7 @@
 fastapi>=0.115.0,<1.0.0
 uvicorn[standard]>=0.32.0
+# Required for multipart uploads (PROJ-02 / SEC-04).
+python-multipart>=0.0.9
 # Pin below 2.1: 2.1+ defaults postgresql:// to psycopg3; we use psycopg2-binary.
 sqlalchemy>=2.0.36,<2.1
 alembic>=1.14.0
