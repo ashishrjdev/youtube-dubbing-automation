@@ -30,8 +30,10 @@ class Settings(BaseSettings):
     deepgram_api_key: str = ""
     openai_api_key: str = ""
     elevenlabs_api_key: str = ""
-    # Cap video length before transcription / TTS spend (PROJ-01).
+    # Cap video/audio length before transcription / TTS spend (PROJ-01 / PROJ-02).
     max_video_minutes: int = 60
+    # Max upload size in MB (PROJ-02 / SEC-04). 50 is Supabase free-plan per-file limit.
+    max_upload_mb: int = 50
 
     @field_validator("environment", mode="before")
     @classmethod

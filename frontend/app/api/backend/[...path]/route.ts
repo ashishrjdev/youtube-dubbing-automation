@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { backendFetch } from "@/lib/backend";
 
-const FORWARDED_REQUEST_HEADERS = ["accept", "content-type"];
+const FORWARDED_REQUEST_HEADERS = ["accept", "content-type", "content-length"];
 const FORWARDED_RESPONSE_HEADERS = ["cache-control", "content-disposition", "content-type", "location"];
 
 async function handler(
@@ -26,12 +26,22 @@ async function handler(
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
-  const body =
-    request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+
+  // Stream the body when present — do not buffer uploads into memory (PROJ-02 / SEC-04).
+  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  const init: RequestInit & { duplex?: "half" } = {
+    method: request.method,
+    headers,
+    body: hasBody ? request.body : undefined,
+  };
+  if (hasBody && request.body) {
+    // Required by Node's fetch when sending a ReadableStream body.
+    init.duplex = "half";
+  }
 
   let upstream: Response;
   try {
-    upstream = await backendFetch(target, { method: request.method, headers, body });
+    upstream = await backendFetch(target, init);
   } catch {
     return Response.json({ detail: "Backend unavailable" }, { status: 502 });
   }

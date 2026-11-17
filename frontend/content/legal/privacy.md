@@ -11,7 +11,7 @@
 ## 2. What we collect
 **Account information.** Your email address and a password. Passwords are handled by our authentication provider and stored only as a hash; we never see or store your password in readable form.
 
-**Project content.** What you give us to use the Service: YouTube links, audio files you upload, transcripts, speaker labels and character names, script text you write or edit, voice choices, and the audio we generate.
+**Project content.** What you give us to use the Service: YouTube links, transcripts, speaker labels and character names, script text you write or edit, voice choices, and the audio we generate. Audio you upload, or that we extract from a YouTube link, is used only to create the transcript and is deleted when transcription finishes or fails.
 
 **Technical data.** Basic technical information such as IP address, browser type, and error details, used to keep the Service secure and working. {{ERROR_TRACKING_NOTE}}
 
@@ -30,7 +30,7 @@ To provide the Service, your data is processed by these third-party providers. T
 
 | Provider | Purpose | Data they receive |
 |---|---|---|
-| Supabase | Authentication, database, file storage | Email, hashed password, project data, uploaded and generated audio |
+| Supabase | Authentication, database, file storage | Email, hashed password, project data, generated audio, and uploaded audio briefly until transcription finishes |
 | {{TRANSCRIPTION_PROVIDER}} (AssemblyAI or Deepgram) | Speech-to-text and speaker detection | The audio of your project |
 | OpenAI | Grammar fixes and name localization | Transcript text and character names |
 | ElevenLabs | Voice generation | Script text and the voices you choose |
@@ -44,7 +44,7 @@ To provide the Service, your data is processed by these third-party providers. T
 We use only the cookies needed to keep you signed in. They are essential, so we do not show a cookie consent banner. If we add analytics or other non-essential cookies, we will update this policy and ask for consent where required.
 
 ## 6. How long we keep data
-We keep your account and project data until you delete the project or your account. Deleting a project removes its script and generated audio. {{DELETION_NOTE}} Backups, if any, may keep copies for a limited time after deletion.
+Source audio (what you upload, or what we extract from a YouTube link) is deleted when transcription finishes or fails. We keep your account and project data until you delete the project or your account. Deleting a project removes its script and generated audio. {{DELETION_NOTE}} Backups, if any, may keep copies for a limited time after deletion.
 
 ## 7. Your choices and rights
 You can edit or delete your projects in the app. To access, correct, export, or delete your personal data or your account, contact {{CONTACT_EMAIL}}. Depending on where you live, you may have additional rights under local law, and we will respond as the law requires.

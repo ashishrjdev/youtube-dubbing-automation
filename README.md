@@ -156,14 +156,45 @@ Audio files (uploaded source audio and generated clips) live in Supabase Storage
 
 | What | Path |
 | --- | --- |
-| User-uploaded source audio | `uploads/{project_id}/{filename}` |
+| Temporary source upload (PROJ-02) | `uploads/{project_id}/source.{mp3\|wav\|m4a}` — never the user's filename |
 | Generated audio | `generations/{project_id}/{generation_id}.mp3` |
 
-**Backend API.** `app/services/storage.py` exposes `upload_file(path, file_bytes, content_type)`, `get_signed_url(path, expires_in=3600)`, and `delete_file(path)`. All three use the **service role key** server-side and raise `StorageError` on failure rather than failing silently.
+**Backend API.** `app/services/storage.py` exposes `upload_file(path, file_bytes, content_type)`, `get_signed_url(path, expires_in=3600)`, `delete_file(path)`, and `delete_source_audio(project)`. All use the **service role key** server-side and raise `StorageError` on failure rather than failing silently.
 
 **The frontend never talks to Supabase Storage directly** and never sees `SUPABASE_SERVICE_KEY`. Uploads and downloads go through backend endpoints, which hand the browser signed URLs.
 
-**Verify (development only):**
+### Source audio is never kept
+
+Uploaded (and later YouTube-extracted) source audio is a **temporary handoff** so the API and the RQ worker — separate containers — can share a file. It lives briefly in the private `audio-files` bucket under `uploads/{project_id}/source.{ext}`.
+
+- The stub `transcribe_job` (and the real TRANS-02 job later) calls `delete_source_audio` in a `finally` block, so the object is removed when transcription finishes **or** fails.
+- Only transcript / project data remains after that.
+- Caps: `MAX_UPLOAD_MB` (default **50**, Supabase free-plan per-file limit) and `MAX_VIDEO_MINUTES` (duration, shared with YouTube).
+
+**Orphan cleanup (manual for now).** If a worker dies before `finally` runs, objects can linger. Delete uploads older than 24 hours when the project is missing or no longer `transcribing`:
+
+```bash
+cd backend
+.venv/bin/python -m scripts.cleanup_orphan_uploads          # delete
+.venv/bin/python -m scripts.cleanup_orphan_uploads --dry-run
+```
+
+Scheduling this script is later work.
+
+### Seed dashboard projects (development only)
+
+`backend/scripts/seed_projects.py` inserts N fake projects across **every** status for UI work on `/dashboard`. It refuses to run unless `ENVIRONMENT=development`.
+
+```bash
+cd backend
+.venv/bin/python -m scripts.seed_projects --email you@example.com --count 45
+# or
+.venv/bin/python -m scripts.seed_projects --user-id <supabase-auth-uuid> --count 45
+```
+
+Titles include long strings, unicode, and HTML-looking text (rendered as plain text in the UI). Some cards have YouTube thumbnails; upload-style rows use the audio placeholder.
+
+**Verify storage privacy (development only):**
 
 ```bash
 # Uploads a test WAV, fetches it via a signed URL (should work) and via the
@@ -282,6 +313,7 @@ Every request body is a Pydantic model that extends `RequestModel` (`app/core/va
   - `DraftScriptText`: 0–5,000 chars. Used for `rewritten_text` on create, before the rewrite has run.
   - `SourceRef`: 1–2,048 chars.
 - **YouTube URLs (PROJ-01).** `parse_youtube_url()` in `app/services/youtube.py` accepts only `http`/`https` hosts `youtube.com` / `www.youtube.com` / `m.youtube.com` / `youtu.be`, shapes `/watch?v=ID`, `youtu.be/ID`, `/shorts/ID`, `/embed/ID`, and an 11-character ID. Credentials, custom ports, lookalike hosts, and playlist-only URLs are rejected. **Never pass the user's raw string to yt-dlp** — only the canonical `https://www.youtube.com/watch?v=<id>` built from the validated ID. Availability uses yt-dlp with `download=False`; videos longer than `MAX_VIDEO_MINUTES` (default 60) are rejected. YouTube changes break yt-dlp regularly, so bumping the pinned `yt-dlp` version in `requirements.txt` is routine maintenance.
+- **Audio uploads (PROJ-02 / SEC-04).** `POST /projects/upload` streams the multipart body to a temp file in chunks (abort at `MAX_UPLOAD_MB`, default 50), allowlists `.mp3`/`.wav`/`.m4a`, and verifies contents with `ffprobe` (never a shell). Storage path is always `uploads/{project_id}/source.{ext}` — never the user filename. Source audio is deleted when `transcribe_job` finishes or fails.
 - **Numbers:** `speed` must be between 0.7 and 1.2 (the ElevenLabs range). `order_index` must be finite, not NaN or infinity.
 - **SQL:** use the SQLAlchemy ORM or bound parameters only. Never build SQL with f-strings or `%` formatting from user input.
 - **Frontend:** render user text as normal JSX children, which React escapes. Never pass user-supplied text to `dangerouslySetInnerHTML`.
@@ -292,7 +324,7 @@ Every request body is a Pydantic model that extends `RequestModel` (`app/core/va
 
 | Service | Where secrets live | Variables |
 | --- | --- | --- |
-| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `MAX_VIDEO_MINUTES`. API service only: `FORWARDED_ALLOW_IPS` |
+| Backend API + worker | Railway / Render service environment variables (set on **both** services) | `ENVIRONMENT`, `CORS_ORIGINS`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_KEY`, `DATABASE_URL`, `REDIS_URL`, `TRANSCRIPTION_PROVIDER`, `ASSEMBLYAI_API_KEY`, `DEEPGRAM_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`, `MAX_VIDEO_MINUTES`, `MAX_UPLOAD_MB`. API service only: `FORWARDED_ALLOW_IPS` |
 | Frontend | Vercel project environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `API_URL` (server-only backend URL, must be `https://`) |
 
 - Anything prefixed `NEXT_PUBLIC_` is bundled into browser JavaScript and is public. Only the Supabase URL, the anon key, and the API URL may ever go there. The service key and all provider API keys stay on the backend.

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
+import { AudioUploadForm } from "@/components/projects/audio-upload-form";
 import { YoutubeUrlForm } from "@/components/projects/youtube-url-form";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type Tab = "youtube" | "upload";
@@ -37,14 +37,18 @@ export function NewProjectTabs() {
         <button
           type="button"
           role="tab"
-          aria-selected={false}
-          aria-disabled="true"
-          disabled
+          aria-selected={tab === "upload"}
           id="tab-upload"
-          className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-label-md text-muted-foreground/70"
+          aria-controls="panel-upload"
+          onClick={() => setTab("upload")}
+          className={cn(
+            "flex-1 rounded-lg px-4 py-2.5 text-label-md transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            tab === "upload"
+              ? "bg-card text-foreground shadow-card"
+              : "text-muted-foreground hover:text-foreground",
+          )}
         >
           Upload audio
-          <Badge variant="secondary">Coming next</Badge>
         </button>
       </div>
 
@@ -62,6 +66,22 @@ export function NewProjectTabs() {
           </p>
         </div>
         <YoutubeUrlForm />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-upload"
+        aria-labelledby="tab-upload"
+        hidden={tab !== "upload"}
+        className="rounded-2xl border border-border/70 bg-card p-6 shadow-card sm:p-8"
+      >
+        <div className="mb-6 grid gap-1">
+          <h2 className="text-body-lg font-semibold text-foreground">Upload audio</h2>
+          <p className="text-body-md text-muted-foreground">
+            Source audio is only kept long enough to transcribe, then deleted.
+          </p>
+        </div>
+        <AudioUploadForm />
       </div>
     </div>
   );

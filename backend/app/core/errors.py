@@ -26,6 +26,8 @@ _STATUS_ERROR_CODES: dict[int, str] = {
     status.HTTP_404_NOT_FOUND: "not_found",
     status.HTTP_405_METHOD_NOT_ALLOWED: "method_not_allowed",
     status.HTTP_409_CONFLICT: "conflict",
+    status.HTTP_413_CONTENT_TOO_LARGE: "file_too_large",
+    status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: "unsupported_file_type",
     status.HTTP_422_UNPROCESSABLE_CONTENT: "validation_error",
     status.HTTP_429_TOO_MANY_REQUESTS: "rate_limited",
     status.HTTP_500_INTERNAL_SERVER_ERROR: "internal_error",

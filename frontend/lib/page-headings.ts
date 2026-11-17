@@ -17,7 +17,7 @@ export function pageHeading(pathname: string): PageHeading | null {
   if (pathname === "/projects/new") {
     return {
       title: "New project",
-      description: "Start from a YouTube link. Upload comes next.",
+      description: "Start from a YouTube link or an audio upload.",
       back: BACK_TO_PROJECTS,
     };
   }
